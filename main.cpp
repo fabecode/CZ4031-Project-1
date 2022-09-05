@@ -1,56 +1,21 @@
 #include <iostream>
 #include <vector>
-#include <fstream>
+#include <string>
 #include "memory.h"
 
 using namespace std;
 
 int main(int argc, char **argv) {
-    disk *Disk = new disk();
+    // creates a new instance of disk with specific blocksize
+    disk *Disk = new disk(200);
     // add path to data here
-    ifstream infile("...");
-    if (!infile){
-        cerr << "File failed to open.\n";
-        exit(1);
-    }
+    Disk->readDataFromFile(".\\data.tsv");
 
-    string str;
-    float avgRate;
-    int nVotes;
+    Disk->printitems();
 
-    block *tBlock = new block();
-    int i = 0;
-    while (infile.peek() != EOF) {
-        //consume the first line
-        if (i==0) {
-            i++;
-            infile >> str >> str >> str;
-            continue;
-        }
-        infile >> str >> avgRate >> nVotes;
+    disk *Disk2 = new disk(500);
+    // add path to data here
+    Disk2->readDataFromFile(".\\data.tsv");
 
-        record *tRecord = new record();
-        tRecord->averageRating = avgRate;
-        tRecord->numVotes = nVotes;
-        tRecord->tconst = str;
-
-        if (tBlock->size >= 18) {
-            tBlock->records.push_back(tRecord);
-            tBlock->size -= 18;
-        } else {
-            Disk->blocks.push_back(tBlock);
-            tBlock = new block();
-            tBlock->records.push_back(tRecord);
-            tBlock->size -= 18;
-            Disk->size += 200;
-        }
-    }
-
-    // adding the final block
-    Disk->blocks.push_back(tBlock);
-    Disk->size += 200;
-
-    cout << Disk->blocks[0]->size << endl;
-    cout << Disk->blocks.back()->records.back()->tconst << " " << Disk->blocks.back()->records.back()->averageRating << endl;
-    cout << Disk->size << " " << Disk->blocks.size() << endl;
+    Disk2->printitems();
 }
