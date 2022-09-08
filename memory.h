@@ -27,16 +27,29 @@ class disk {
         std::vector<block> blocks;
         int size;
         int blocksize;
+        int numBlocks;
     public:
         disk(int blocksize);
 
         ~disk();
 
-        void insertRecords(std::string tconst, float averageRating, int numVotes);
-
+        // prints all records in the database
         void printitems();
 
-        void readDataFromFile(std::string filePath);\
+        // create disk by reading from file
+        void readDataFromFile(std::string filePath);
+
+        // retrieves a single block
+        block getBlock(int index);
+
+        // output the number of blocks used and the size of the database
+        void reportStatistics();
+
+        // insert new record into empty block
+        void insertRecords(std::string tconst, float averageRating, int numVotes);
+
+        // deletes a record based on the key
+        void deleteRecord(std::string key);
 };
 
 #endif
