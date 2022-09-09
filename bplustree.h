@@ -1,0 +1,93 @@
+#ifndef B_PLUS_TREE_H
+#define B_PLUS_TREE_H
+
+#include <array>
+#include "memory.h"
+
+//Node in B+ Tree
+class Node
+{
+private:
+  // Variables
+  block *pointers;      // A pointer to an array of struct {void *blockAddress, short int offset} containing other nodes in disk.
+  float *keys;            // Pointer to an array of keys in this node.
+  int numKeys;            // Current number of keys in this node.
+  bool isLeaf;            // Whether this node is a leaf node.
+  friend class BPlusTree; // Let the BPlusTree class access this class' private variables.
+
+public:
+  // Methods
+
+  // Constructor
+  Node(int maxKeys); // Takes in max keys in a node.
+};
+
+// The B+ Tree itself.
+class BPlusTree
+{
+private:
+  // Variables
+  disk *disk;     // Pointer to a memory pool for data blocks.
+  disk *index;    // Pointer to a memory pool in disk for index.
+  int maxKeys;          // Maximum keys in a node.
+  int degree;           // Number of degree
+  int numNodes;         // Number of node
+  Node *root;           //Ptr to main mem node
+  void *rootAddress;    // Ptr to root address
+  std::size_t nodeSize; // Size of a node = Size of block.
+
+  // Methods
+
+  // Updates the parent node to point at both child nodes, and adds a parent node if needed.
+  void insertInternal(float key, Node *cursorDiskAddress, Node *childDiskAddress);
+
+  // Helper function for deleting records.
+  void removeInternal(float key, Node *cursorDiskAddress, Node *childDiskAddress);
+
+  // Finds the direct parent of a node in the B+ Tree.
+  // Takes in root and a node to find parent for, returns parent's disk address.
+  Node *findParent(Node *, Node *, float lowerBoundKey);
+
+public:
+  // Methods
+
+  // Constructor, takes in block size to determine max keys/pointers in a node.
+  BPlusTree(std::size_t blockSize, disk *disk, disk *index);
+
+  // Search for keys corresponding to a range in the B+ Tree given a lower and upper bound. Returns a list of matching Records.
+  void search(float lowerBoundKey, float upperBoundKey);
+
+  
+  // Prints out the B+ Tree in the console.
+  void display(Node *, int level);
+
+  // Prints out a specific node and its contents in the B+ Tree.
+  void displayNode(Node *node);
+
+  // Prints out a data block and its contents in the disk.
+  void displayBlock(void *block);
+
+
+  // Getters and setters
+
+  // Returns a pointer to the root of the B+ Tree.
+  Node *getRoot()
+  {
+    return root;
+  };
+
+  // Returns num of degree 
+  int getDegree();
+
+  int getNumNodes()
+  {
+    return numNodes;
+  }
+
+  int getMaxKeys()
+  {
+    return maxKeys;
+  }
+};
+
+#endif
