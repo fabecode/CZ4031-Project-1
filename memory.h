@@ -15,13 +15,6 @@ struct block {
     int size;
 };
 
-//struct disk {
-//    std::vector<block> blocks;
-//    int size;
-//
-//    disk() : size(0), blocks() {}
-//};
-
 class disk {
     private:
         std::vector<block> blocks;
@@ -39,8 +32,8 @@ class disk {
         // create disk by reading from file
         void readDataFromFile(std::string filePath);
 
-        // retrieves a single block
-        block getBlock(int index);
+        // returns a reference to the disk, used to build the bp tree
+        std::vector<block> *getBlock();
 
         // output the number of blocks used and the size of the database
         void reportStatistics();

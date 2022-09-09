@@ -95,6 +95,7 @@ void disk::deleteRecord(std::string key) {
     for (int i=0; i<disk::numBlocks; i++) {
         block currentBlock = disk::blocks[i];
 
+        // remove record if record.tconst == key
         currentBlock.records.erase(remove_if(currentBlock.records.begin(), currentBlock.records.end(),[&](record const r) {
            return r.tconst == key;
         }), currentBlock.records.end());
@@ -117,21 +118,18 @@ void disk::deleteRecord(std::string key) {
 
 // sanity check
 void disk::printitems() {
-//    std::cout << blocks.back().size << std::endl;
-//    std::cout << blocks.back().records.back().tconst << " " << blocks.back().records.back().averageRating << std::endl;
-//    std::cout << disk::size << " " << blocks.size() << std::endl;
-
     for (int i=0; i<disk::blocks.size(); i++) {
         std::vector<record> temp = blocks[i].records;
         for (int j=0; j<temp.size(); j++) {
             std::cout << temp[j].tconst << " " << temp[j].averageRating << " " << temp[j].numVotes << std::endl;
         }
     }
-
 }
 
-block disk::getBlock(int index) {
-    return disk::blocks[index];
+// returns a reference to the disk, used to build the bp tree
+std::vector<block> *disk::getBlock() {
+    //return disk::blocks[index];
+    return &(disk::blocks);
 }
 
 void disk::reportStatistics() {
