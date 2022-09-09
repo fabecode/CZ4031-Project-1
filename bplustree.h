@@ -9,66 +9,58 @@ class Node
 {
 private:
   // Variables
-  block *pointers;      // A pointer to an array of struct {void *blockAddress, short int offset} containing other nodes in disk.
-  float *keys;            // Pointer to an array of keys in this node.
-  int numKeys;            // Current number of keys in this node.
-  bool isLeaf;            // Whether this node is a leaf node.
-  friend class BPlusTree; // Let the BPlusTree class access this class' private variables.
+  block *pointers;        //ptr to arr of struct
+  float *keys;            //ptr to arr of key
+  int numKeys;            //num of key
+  bool isLeaf;            //true/false
+  friend class BPlusTree; //access to private var
 
 public:
-  // Methods
-
-  // Constructor
-  Node(int maxKeys); // Takes in max keys in a node.
+  Node(int maxKeys); 
 };
 
-// The B+ Tree itself.
 class BPlusTree
 {
 private:
   // Variables
-  disk *disk;     // Pointer to a memory pool for data blocks.
-  disk *index;    // Pointer to a memory pool in disk for index.
-  int maxKeys;          // Maximum keys in a node.
-  int degree;           // Number of degree
-  int numNodes;         // Number of node
-  Node *root;           //Ptr to main mem node
-  void *rootAddress;    // Ptr to root address
-  std::size_t nodeSize; // Size of a node = Size of block.
+  disk *disk;           //ptr to memory block
+  disk *index;          //ptr to memory index
+  int maxKeys;          //max num of key
+  int degree;           //degree of b+ tree
+  int numNodes;         //num of node
+  Node *root;           //ptr to main main root
+  void *rootAddress;    //ptr to root address
 
-  // Methods
+  std::size_t nodeSize; 
 
-  // Updates the parent node to point at both child nodes, and adds a parent node if needed.
-  void insertInternal(float key, Node *cursorDiskAddress, Node *childDiskAddress);
+  //Methods
 
-  // Helper function for deleting records.
-  void removeInternal(float key, Node *cursorDiskAddress, Node *childDiskAddress);
+  void insert(float key, Node *cursorDiskAddress, Node *childDiskAddress);
+  
+  void remove(float key, Node *cursorDiskAddress, Node *childDiskAddress);
 
-  // Finds the direct parent of a node in the B+ Tree.
-  // Takes in root and a node to find parent for, returns parent's disk address.
   Node *findParent(Node *, Node *, float lowerBoundKey);
 
 public:
   // Methods
 
-  // Constructor, takes in block size to determine max keys/pointers in a node.
+  // Constructor
   BPlusTree(std::size_t blockSize, disk *disk, disk *index);
 
-  // Search for keys corresponding to a range in the B+ Tree given a lower and upper bound. Returns a list of matching Records.
+  //search
   void search(float lowerBoundKey, float upperBoundKey);
 
-  
-  // Prints out the B+ Tree in the console.
+  //print B+ tree
   void display(Node *, int level);
 
-  // Prints out a specific node and its contents in the B+ Tree.
+  //print node and content
   void displayNode(Node *node);
 
-  // Prints out a data block and its contents in the disk.
+  //print block with its data
   void displayBlock(void *block);
 
 
-  // Getters and setters
+  //get and set
 
   // Returns a pointer to the root of the B+ Tree.
   Node *getRoot()
