@@ -7,15 +7,16 @@
 using namespace std;
 
 disk::disk(int bsize) {
-    size = 0;
-    blocksize = bsize;
-    numBlocks = 0;
+    disk::size = 0;
+    disk::blocksize = bsize;
+    disk::numBlocks = 0;
 }
 
 disk::~disk() {
 
 }
 
+// reads all data from file and add to the disk
 void disk::readDataFromFile(std::string filePath) {
     std::ifstream infile(filePath);
     if (!infile){
@@ -23,7 +24,8 @@ void disk::readDataFromFile(std::string filePath) {
         exit(1);
     }
 
-    block tblock = block{std::vector<record>(), disk::blocksize};
+    // initialise block with empty record vector, and blocksize (either 200 or 500)
+    block tblock = block{std::vector<record>(), (uint16_t) disk::blocksize};
     std::string str;
     float avgRate;
     int nVotes, i=0;
@@ -41,30 +43,36 @@ void disk::readDataFromFile(std::string filePath) {
         tRecord.numVotes = nVotes;
         str.copy(tRecord.tconst, 10, 0);
 
-        if (tblock.size >= 18) {
+        // if current block is not full, block.size >= 0
+        if (tblock.size - 18 >= 0) {
             tblock.records.push_back(tRecord);
-            tblock.size -= 18;
+            tblock.size = (uint16_t) (tblock.size - 18);
+            // current block is full, we push into the disk and create a new block to insert the new record
         } else {
-            blocks.push_back(tblock);
-            tblock = block{ std::vector<record>(), disk::blocksize };
-
-            tblock.records.push_back(tRecord);
-            tblock.size -= 18;
-            size += blocksize;
+            // updating disk statistics
+            disk::blocks.push_back(tblock);
+            disk::size += disk::blocksize;
             disk::numBlocks += 1;
+
+            // create and insert new block
+            tblock = block{ std::vector<record>(), (uint16_t) disk::blocksize };
+            tblock.records.push_back(tRecord);
+            tblock.size = (uint16_t) (tblock.size - 18);
         }
     }
 
     // adding the final block if there are records
     if (!tblock.records.empty()) {
-        blocks.push_back(tblock);
-        size += disk::blocksize;
+        disk::blocks.push_back(tblock);
+        disk::size += disk::blocksize;
         disk::numBlocks += 1;
     }
 
+    // print total size of disk and the number of blocks
     disk::reportStatistics();
 }
 
+// insert a new tuple into disk
 void disk::insertRecords(std::string tconst, float averageRating, int numVotes) {
     record tRecord = record();
     tRecord.averageRating = averageRating;
@@ -72,20 +80,23 @@ void disk::insertRecords(std::string tconst, float averageRating, int numVotes) 
     tconst.copy(tRecord.tconst, 10, 0);
 
     // find a suitable block to insert record
-    for (int i=0; i<blocks.size(); i++) {
-        if (blocks[i].size >= 18) {
+    for (int i=0; i<disk::numBlocks; i++) {
+        if (blocks[i].size -18 >= 0) {
             blocks[i].records.push_back(tRecord);
-            blocks[i].size -= 18;
+            blocks[i].size = (uint16_t) (blocks[i].size - 18);
             return;
         }
     }
 
     // all blocks are full, allocate a new block
-    block tBlock = block{std::vector<record>(), disk::blocksize};
+    block tBlock = block{std::vector<record>(), (uint16_t) disk::blocksize};
     blocks.push_back(tBlock);
     tBlock.records.push_back(tRecord);
-    tBlock.size -= 18;
-    size += disk::blocksize;
+    tBlock.size = (uint16_t) (tBlock.size - 18);
+
+    // update disk
+    disk::size += disk::blocksize;
+    disk::numBlocks += 1;
 }
 
 // deletes a record from disk based on key (tconst)
@@ -93,20 +104,21 @@ void disk::deleteRecord(std::string key) {
     // for each block in disk
     bool emptyBlock = false;
     for (int i=0; i<disk::numBlocks; i++) {
-        block currentBlock = disk::blocks[i];
+        block *currentBlock = &(disk::blocks[i]);
 
         // remove record if record.tconst == key
-        currentBlock.records.erase(remove_if(currentBlock.records.begin(), currentBlock.records.end(),[&](record const r) {
-           return r.tconst == key;
-        }), currentBlock.records.end());
+        currentBlock->records.erase(remove_if(currentBlock->records.begin(), currentBlock->records.end(),[&](record const &r) {
+            return r.tconst == key;
+        }), currentBlock->records.end());
 
-        currentBlock.size = (disk::blocksize - (currentBlock.records.size() * 18));
-        disk::blocks[i] = currentBlock;
-        if (currentBlock.records.empty()) {
+        // update remaining size of block
+        currentBlock->size = (uint16_t) (disk::blocksize - (currentBlock->records.size() * 18));
+        if (currentBlock->records.empty()) {
             emptyBlock = true;
         }
     }
 
+    // we remove the block if its empty from the disk
     if (emptyBlock) {
         disk::blocks.erase(remove_if(disk::blocks.begin(), disk::blocks.end(),[&](block const &b) {
             return b.records.empty();
@@ -120,6 +132,7 @@ void disk::deleteRecord(std::string key) {
 void disk::printitems() {
     for (int i=0; i<disk::blocks.size(); i++) {
         std::vector<record> temp = blocks[i].records;
+        std::cout << blocks[i].size << std::endl;
         for (int j=0; j<temp.size(); j++) {
             std::cout << temp[j].tconst << " " << temp[j].averageRating << " " << temp[j].numVotes << std::endl;
         }
@@ -128,10 +141,10 @@ void disk::printitems() {
 
 // returns a reference to the disk, used to build the bp tree
 std::vector<block> *disk::getBlock() {
-    //return disk::blocks[index];
     return &(disk::blocks);
 }
 
+// output disk statistics
 void disk::reportStatistics() {
     std::cout << "Number of Blocks used: " << disk::numBlocks << "." << std::endl;
     std::cout << "Database size (MB): " << ((disk::size*1.0) / 1048576) << "." << std::endl;
