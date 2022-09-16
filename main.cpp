@@ -40,10 +40,10 @@ int main(int argc, char **argv) {
     BPlusTree node;
     for(block b:*diskBlock){
         for(record r:b.records){
-            while(count < 1){
+            if(count < 3){
                 node.insert(&r,r.numVotes);
-                count++;
             }
+            count++;
         }
     }
 
