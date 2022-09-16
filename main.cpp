@@ -3,7 +3,8 @@
 #include <string>
 #include "memory.h"
 #include "memory.cpp"
-#include "BPlusTree.h"
+#include "bplustree.h"
+#include "bplustree.cpp"
 
 using namespace std;
 
@@ -33,5 +34,19 @@ int main(int argc, char **argv) {
     Disk2->readDataFromFile(".\\data.tsv");
 
     //Disk2->printitems();
+
+    //loop to insert add & key pair
+    int count = 0;
+    BPlusTree node;
+    for(block b:*diskBlock){
+        for(record r:b.records){
+            while(count < 1){
+                node.insert(&r,r.numVotes);
+                count++;
+            }
+        }
+    }
+
+    node.display(node.getRoot());
     
 }
