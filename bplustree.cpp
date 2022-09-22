@@ -6,6 +6,8 @@
 #include <unordered_map>
 #include <cstring>
 #include <array>
+#include <vector>
+#include <cmath>
 
 using namespace std;
 
@@ -54,6 +56,7 @@ void BPlusTree::insert(void *address, float key)
   if (root == nullptr)
   {
      // Create new node in main memory, set it to root, and add the key and values to it.
+     
     root = new Node(maxKeys);
     root->keys[0] = key;
     root->isLeaf = true; // It is both the root and a leaf.
@@ -64,6 +67,7 @@ void BPlusTree::insert(void *address, float key)
   // Else if root exists already, traverse the nodes to find the proper place to insert the key.
   else
   {
+    
     Node *cursor = root;
     Node *parent;                          // Keep track of the parent as we go deeper into the tree in case we need to update it.
 
@@ -118,7 +122,7 @@ void BPlusTree::insert(void *address, float key)
       cursor->keys[i] = key;
       cursor->numKeys++;
       cursor->pointers[i] = address;
-      cursor->numKeys++;
+      //cursor->numKeys++;
 
       // Update leaf node pointer link to next node
       cursor->pointers[cursor->numKeys] = next;
@@ -194,14 +198,18 @@ void BPlusTree::insert(void *address, float key)
 
       // If we are at root (aka root == leaf), then we need to make a new parent root.
       int check = 0;
-      while( search(newLeaf->keys[check],false,false) != NULL ){
+      float internalKey;
+      while( search(newLeaf->keys[check],false,false) != NULL && check < newLeaf->numKeys){
         check++;
+      }
+      internalKey =  (check == newLeaf->numKeys)? std::nan(""):newLeaf->keys[check];
+
       if (cursor == root)
       {
         Node *newRoot = new Node(maxKeys);
 
         // We need to set the new root's key to be the left bound of the right child.
-        newRoot->keys[0] = newLeaf->keys[check];
+        newRoot->keys[0] = internalKey;
 
         // Point the new root's children as the existing node and the new node.
         newRoot->pointers[0] = cursor;
@@ -217,14 +225,13 @@ void BPlusTree::insert(void *address, float key)
       // If we are not at the root, we need to insert a new parent in the middle levels of the tree.
       else
       {
-        insertInternal(newLeaf->keys[check], parent, newLeaf);
+        insertInternal(internalKey, parent, newLeaf);
       }
     }
   }
 
   // update numnodes ---- jw: not sure if this is required
   //numNodes = index->getAllocated();
-}
 }
 
 // Updates the parent node to point at both child nodes, and adds a parent node if needed.
@@ -449,34 +456,79 @@ Node *BPlusTree::search(int x, bool flag, bool printer)
     return NULL;
 }
 
-void BPlusTree::display(Node *cursor) {
-  if (cursor != NULL) {
+void BPlusTree::displayTree(Node *cursor, std::vector<std::string> *s, int *level){
+  if(cursor->isLeaf){
+    string item;
+    item.append("|");
     for (int i = 0; i < cursor->numKeys; i++) {
-      cout << cursor->keys[i] << " ";
+      item.append(to_string((int)cursor->keys[i]));
+      item.append("|");
     }
-    if(cursor->isLeaf != true) cout << "\n";else cout << '|';
-    if (cursor->isLeaf != true) {
-      for (int i = 0; i < cursor->numKeys + 1; i++) {
-        display((Node*)cursor->pointers[i]);
-      }
+    item.append(" ");
+    *level = 1;
+    if(s->size() < *level){
+      s->push_back(item);
     }
+    else{
+      s->at((*level)-1).append(item);
+    }
+    return;
   }
+
+  string item;
+  for (int i = 0; i < cursor->numKeys + 1; i++) {
+    displayTree((Node*)cursor->pointers[i],s,level);
+
+  }
+  item.append("|");
+  for (int i = 0; i < cursor->numKeys; i++) {
+    item.append(to_string((int)cursor->keys[i]));
+    item.append("|");
+  }
+  item.append(" ");
+  (*level)+=1;
+  if(s->size() < *level){
+    s->push_back(item);
+  }
+  else{
+    s->at(*level-1).append(item);
+  }
+  return;
+
 }
 
-// int main() {
-//   BPlusTree node;
-//   char a = 't';
+void BPlusTree::display() {
+  Node* root = getRoot();
+  vector<string> s;
+  int level = 0;
 
-//   node.insert(&a,(float)5);
-//   node.insert(&a,(float)5);
-//   node.insert(&a,(float)15);
-//   node.insert(&a,(float)25);
-//   node.insert(&a,(float)35);
-//   node.insert(&a,(float)35);
-//   node.insert(&a,(float)38);
-//   node.insert(&a,(float)45);
-//   node.insert(&a,(float)55);
-//   node.insert(&a,(float)65);
+  Node* cursor = root;
 
-//   node.display(node.getRoot());
-// }
+  displayTree(cursor, &s, &level);
+
+  for(int i = s.size()-1; i>0; i--){
+    int spaceCount = (s[0].size() - s[i].size())/2;
+    for(spaceCount;spaceCount>0;spaceCount--){
+      cout << " ";
+    }
+    cout << s[i] << "\n";
+    
+  }
+  cout << s[0] ;
+
+}
+
+int main() {
+  BPlusTree node;
+  char a = 't';
+
+  node.insert(&a,12);
+  node.insert(&a,11);
+  node.insert(&a,10);
+  node.insert(&a,9);
+  node.insert(&a,8);
+  node.insert(&a,7);
+  node.insert(&a,6);
+
+  node.display();
+}

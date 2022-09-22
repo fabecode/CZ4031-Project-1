@@ -2,6 +2,7 @@
 #define B_PLUS_TREE_H
 
 #include <array>
+#include <vector>
 #include "memory.h"
 
 //Node in B+ Tree
@@ -37,6 +38,8 @@ private:
 
   //void insert(float key, Node *cursorDiskAddress, Node *childDiskAddress);
   void insertInternal(float key, Node *cursorDiskAddress, Node *childDiskAddress);
+
+  void displayTree(Node *cursor, std::vector<std::string> *s, int *level);
   
   void remove(float key, Node *cursorDiskAddress, Node *childDiskAddress);
 
@@ -53,7 +56,7 @@ public:
   Node* search(int x, bool flag, bool print);
 
   //print B+ tree
-  void display(Node *);
+  void display();
 
   //print node and content
   void displayNode(Node *node);
