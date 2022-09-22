@@ -69,8 +69,6 @@ void disk::readDataFromFile(std::string filePath) {
         disk::numBlocks += 1;
     }
 
-    // print total size of disk and the number of blocks
-    disk::reportStatistics();
 }
 
 // insert a new tuple into disk
