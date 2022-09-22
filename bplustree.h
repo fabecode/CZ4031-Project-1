@@ -41,7 +41,7 @@ private:
 
   void displayTree(Node *cursor, std::vector<std::string> *s, int *level);
   
-  void remove(float key, Node *cursorDiskAddress, Node *childDiskAddress);
+  void removeInternal(float key, Node *cursorDiskAddress, Node *childDiskAddress);
 
   Node *findParent(Node *, Node *);
 
@@ -65,6 +65,8 @@ public:
   void displayBlock(void *block);
 
   void insert(void* address,float key);
+
+  void remove(float key);
 
   //get and set
 
