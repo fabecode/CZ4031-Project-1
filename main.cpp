@@ -34,31 +34,27 @@ int main(int argc, char **argv) {
   - The parameter n of the B + tree;
   - The number of nodes of the B + tree;
   - The height of the B + tree, i.e., the number of levels of the B + tree;
-  - The root node and its child nodes(actual content);
+  - The root node and 1st child node (actual content);
   =============================================================
   */
-    std::cout << "==================Experiment 2==================" << endl;
-    BPlusTree node;
-    char a = 't';
+    std::cout << "\n==================Experiment 2==================" << endl;
+    BPlusTree bplustree;
     int count = 0;
-    node.insert(&a,(float)5);
 
- //   for (block b:*diskBlock){
- //       for(record r:b.records){
- //           while(count < 10){
- //               node.insert(&r, (float)r.numVotes);
- //               count++;
- //           }
- //       }
- //   }
+    for (block b:*diskBlock){
+        for(record r:b.records){
+            while(count < 10){
+                bplustree.insert(&r, (float)r.numVotes);
+                count++;
+            }
+        }
+    }
 
-    node.display(node.getRoot());
-
-
-    std::cout << "Parameter n of the B+ tree    : " <<endl;
-    std::cout << "Number of nodes of the B+ tree: " <<endl;
-    std::cout << "Height of the B+ tree         : " <<endl;
-    std::cout << "Root nodes and 1st child node : " <<endl;
+    std::cout << "Parameter n of the B+ tree    : " << bplustree.getMaxKeys() <<endl;
+    std::cout << "Number of nodes of the B+ tree: " << bplustree.getNumNodes() <<endl; //numnodes to be updated
+    std::cout << "Height of the B+ tree         : " << bplustree.getDegree() <<endl; //height to be updated
+    std::cout << "Root nodes and 1st child node : " << endl;
+    bplustree.display();
 
 
   /*
@@ -67,12 +63,12 @@ int main(int argc, char **argv) {
   - Retrieve movies with the "numVotes" equal to 500 and report the following statistics:
   - The number and the content of index nodes (first 5) the process accesses;
   - The number and the content of data blocks the process accesses;
-  - The average rating of the records that are returned;
+  - The average of "averageRating's" of the records that are returned;
   =============================================================
   */  
  
 
-  std::cout << "==================Experiment 3==================" << endl;
+  std::cout << "\n==================Experiment 3==================" << endl;
   std::cout <<"Retrieve movies with numVotes equal to 500..."<<endl;     
   std::cout << endl;
   std::cout <<"Number of index nodes the process accesses: " <<endl; 
@@ -90,7 +86,7 @@ int main(int argc, char **argv) {
   =============================================================
   */
 
-  std::cout << "==================Experiment 4==================" << endl;
+  std::cout << "\n==================Experiment 4==================" << endl;
   std::cout <<"Number of index nodes the process accesses: " <<endl; 
   std::cout <<"Content of index nodes the process accesses: "<<endl; 
   std::cout <<"Number of data blocks the process accesses: " <<endl;

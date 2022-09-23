@@ -25,7 +25,7 @@ class BPlusTree
 private:
   // Variables
   disk *disk;           //ptr to memory block
-  //disk *index;          //ptr to memory index
+ //disk *index;          //ptr to memory index
   int maxKeys;          //max num of key
   int degree;           //degree of b+ tree
   int numNodes;         //num of node
@@ -77,7 +77,11 @@ public:
   };
 
   // Returns num of degree 
-  int getDegree();
+  int getDegree()
+  {
+    return degree;
+  }
+  ;
 
   int getNumNodes()
   {
