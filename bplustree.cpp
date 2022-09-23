@@ -223,7 +223,7 @@ void BPlusTree::insert(void *address, float key)
   }
 
   // update numnodes ---- jw: not sure if this is required
-  //numNodes = index->getAllocated();
+//  numNodes = index->Allocated();
 }
 
 // Updates the parent node to point at both child nodes, and adds a parent node if needed.
@@ -513,7 +513,7 @@ void BPlusTree::display() {
 void BPlusTree::remove(float key)
 {
   // set numNodes before deletion
-  //numNodes = index->getAllocated();
+ // numNodes = index->getAllocated();
 
   // Tree is empty.
   if (root == nullptr)
@@ -1081,19 +1081,19 @@ void BPlusTree::removeInternal(float key, Node *cursor, Node *child)
   }
 }
 
-int main() {
-  BPlusTree node;
-  char a = 't';
+//int main() {
+//  BPlusTree node;
+//  char a = 't';
 
-  node.insert(&a,12);
-  node.insert(&a,11);
-  node.insert(&a,10);
-  node.insert(&a,10);
-  node.insert(&a,9);
-  node.insert(&a,8);
-  node.insert(&a,7);
-  node.insert(&a,6);
-  node.remove(10);
+//  node.insert(&a,12);
+//  node.insert(&a,11);
+//  node.insert(&a,10);
+//  node.insert(&a,10);
+//  node.insert(&a,9);
+//  node.insert(&a,8);
+// node.insert(&a,7);
+//  node.insert(&a,6);
+//  node.remove(10);
 
-  node.display();
-}
+//  node.display();
+//}
