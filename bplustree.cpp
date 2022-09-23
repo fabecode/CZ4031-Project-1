@@ -25,7 +25,7 @@ Node::Node(int maxKeys)
 BPlusTree::BPlusTree()
 {
   // change maxkeys!!!!!!!!!!!!
-  maxKeys = 3;
+  maxKeys = 5;
 
   if (maxKeys == 0)
   {
@@ -73,7 +73,7 @@ void BPlusTree::insert(void *address, float key)
       for (int i = 0; i < cursor->numKeys; i++)
       {
         // If key is lesser than current key, go to the left pointer's node.
-        if (key < cursor->keys[i])
+        if ( isnan(cursor->keys[i]) || key < cursor->keys[i])
         {
           cursor = (Node*)cursor->pointers[i];
           break;
@@ -93,10 +93,7 @@ void BPlusTree::insert(void *address, float key)
     {
       int i = 0;
       // While we haven't reached the last key and the key we want to insert is larger than current key, keep moving forward.
-      while (key > cursor->keys[i] && i < cursor->numKeys)
-      {
-        i++;
-      }
+      while (key > cursor->keys[i] && i < cursor->numKeys)i++;
 
       // Update the last pointer to point to the previous last pointer's node. Aka maintain cursor -> Y linked list.
       void* next = cursor->pointers[cursor->numKeys];
@@ -128,9 +125,6 @@ void BPlusTree::insert(void *address, float key)
 
       // Copy all current keys and pointers (including new key to insert) to a temporary list.
       float tempKeyList[maxKeys + 1];
-
-      // We only need to store pointers corresponding to records (ignore those that points to other nodes).
-      // Those that point to other nodes can be manipulated by themselves without this array later.
       void *tempPointerList[maxKeys + 1];
       Node *next = (Node*)cursor->pointers[cursor->numKeys];
 
@@ -180,7 +174,6 @@ void BPlusTree::insert(void *address, float key)
         cursor->keys[i] = tempKeyList[i];
         cursor->pointers[i] = tempPointerList[i];
       }
-
       // Then, the new leaf node. Note we keep track of the i index, since we are using the remaining keys and pointers.
       for (int j = 0; j < newLeaf->numKeys; i++, j++)
       {
@@ -236,10 +229,12 @@ void BPlusTree::insertInternal(float key, Node *cursor, Node *child)
   {
     // Iterate through the parent to see where to put in the lower bound key for the new child.
     int i = 0;
-    while (key > cursor->keys[i] && i < cursor->numKeys)
-    {
-      i++;
+    if(isnan(key)){
+      while(child->keys[child->numKeys]>cursor->keys[i])i++;
+    }else{
+      while (key > cursor->keys[i] && i < cursor->numKeys)i++;
     }
+    
 
     // Now we have i, the index to insert the key in. Bubble swap all keys back to insert the new child's key.
     // We use numKeys as index since we are going to be inserting a new key.
@@ -288,9 +283,10 @@ void BPlusTree::insertInternal(float key, Node *cursor, Node *child)
 
     // Find index to insert key in temp key list.
     int i = 0;
-    while (key > tempKeyList[i] && i < maxKeys)
-    {
-      i++;
+    if(isnan(key)){
+      while(child->keys[child->numKeys]>tempKeyList[i])i++;
+    }else{
+      while (key > tempKeyList[i] && i < maxKeys)i++;
     }
 
     // Swap all elements higher than index backwards to fit new key.
@@ -305,7 +301,7 @@ void BPlusTree::insertInternal(float key, Node *cursor, Node *child)
 
     // Move all pointers back to fit new child's pointer as well.
     //2????
-    for (int j = maxKeys + 2; j > i + 1; j--)
+    for (int j = maxKeys + 1; j > i + 1; j--)
     {
       tempPointerList[j] = tempPointerList[j - 1];
     }
@@ -331,13 +327,30 @@ void BPlusTree::insertInternal(float key, Node *cursor, Node *child)
       newInternal->keys[i] = tempKeyList[j];
     }
 
+    for (i = 0; i < cursor->numKeys + 1; i++)
+    {
+      cursor->pointers[i] = tempPointerList[i];
+    }
+
     // Insert pointers into the new internal parent node.
     for (i = 0, j = cursor->numKeys + 1; i < newInternal->numKeys + 1; i++, j++)
     {
       newInternal->pointers[i] = tempPointerList[j];
     }
+    for (int i = cursor->numKeys; i < maxKeys; i++) 
+    {
+      cursor->keys[i] = float();
+    }
+
+    for (int i = cursor->numKeys + 2; i < maxKeys + 1; i++)
+    {
+      cursor->pointers[i] = nullptr;
+    }
+
+
+
     // assign the new child to the original parent
-    cursor->pointers[cursor->numKeys] = child;
+    //cursor->pointers[cursor->numKeys] = child;
 
 
     // If current cursor is the root of the tree, we need to create a new root.
@@ -347,7 +360,8 @@ void BPlusTree::insertInternal(float key, Node *cursor, Node *child)
       // Update newRoot to hold the children.
       // Take the rightmost key of the old parent to be the root.
       // Although we threw it away, we are still using it to denote the leftbound of the old child.
-      newRoot->keys[0] = cursor->keys[cursor->numKeys];
+      //newRoot->keys[0] = cursor->keys[cursor->numKeys];
+      newRoot->keys[0] = tempKeyList[cursor->numKeys];
 
       // Update newRoot's children to be the previous two nodes
       newRoot->pointers[0] = cursor;
@@ -387,7 +401,7 @@ Node *BPlusTree::findParent(Node *cursor, Node *child) {
   return parent;
 }
 
-Node *BPlusTree::search(int x, bool flag, bool printer)
+Node *BPlusTree::search(float x, bool flag, bool printer)
 {
     //search logic
     if(root==NULL)
@@ -402,7 +416,7 @@ Node *BPlusTree::search(int x, bool flag, bool printer)
         {
             for(int i = 0; i < cursor->numKeys; i++)
             {
-                if(x < cursor->keys[i])
+                if(isnan(cursor->keys[i]) || x < cursor->keys[i])
                 {
                     if (printer == true) {
                         for (int j = 0; j < cursor->numKeys; j++) {
@@ -450,6 +464,7 @@ Node *BPlusTree::search(int x, bool flag, bool printer)
 
 void BPlusTree::displayTree(Node *cursor, std::vector<std::string> *s, int *level){
   if(cursor->isLeaf){
+    cout << "Enter leaf\n";
     string item;
     item.append("|");
     for (int i = 0; i < cursor->numKeys; i++) {
@@ -474,11 +489,13 @@ void BPlusTree::displayTree(Node *cursor, std::vector<std::string> *s, int *leve
   }
   item.append("|");
   for (int i = 0; i < cursor->numKeys; i++) {
-    item.append(to_string((int)cursor->keys[i]));
+    if(isnan(cursor->keys[i])) item.append("NaN");
+    else item.append(to_string((int)cursor->keys[i]));
     item.append("|");
   }
   item.append(" ");
   (*level)+=1;
+  s->at(*level-2).append("    ");
   if(s->size() < *level){
     s->push_back(item);
   }
@@ -527,6 +544,53 @@ void BPlusTree::remove(float key)
     Node *parent;                          // Keep track of the parent as we go deeper into the tree in case we need to update it.
     int leftSibling, rightSibling; // Index of left and right child to borrow from.
 
+    bool findkey = false;
+    while (true){
+
+      parent = cursor;
+
+      for (int i=0; i<cursor->numKeys; i++){
+        // Keep track of left and right to borrow.
+        leftSibling = i - 1;
+        rightSibling = i + 1;
+
+        Node* childcursor = (Node*)cursor->pointers[i];
+
+        if(childcursor->isLeaf){
+          for(int j = 0; j < childcursor->numKeys; j++){
+            if(key == childcursor->keys[j]){
+              findkey == true;
+              break;}
+            }
+        }
+        cursor = (Node*)cursor->pointers[i];
+      }
+      cout << "error not found\n";
+      break;
+
+      // if (i == cursor->numKeys - 1)
+      //   {
+      //     leftSibling = i;
+      //     rightSibling = i + 2;
+
+      //     cursor = (Node*)cursor->pointers[i+1];
+      //     break;
+      //   }
+     
+      // for(int i = 0; i < cursor->numKeys; i++){
+      // Node* cursor2 = (Node*)cursor->pointers[i];
+      // while(cursor2->isLeaf != true){
+      //   cursor2=cursor2->pointers[]
+      //   for(int i = 0; i < cursor->numKeys;i++){
+      //     if(key == cursor.keys[i])break;
+      //     //else cursor = parent;
+      //   }
+
+      // }
+      // }
+
+      
+    }
     // While not leaf, keep following the nodes to correct key.
     while (cursor->isLeaf == false)
     {
@@ -541,7 +605,7 @@ void BPlusTree::remove(float key)
         rightSibling = i + 1;
 
         // If key is lesser than current key, go to the left pointer's node.
-        if (key < cursor->keys[i])
+        if (isnan(cursor->keys[i]) || key < cursor->keys[i])
         {
           cursor = (Node*)cursor->pointers[i];
           break;
@@ -556,20 +620,29 @@ void BPlusTree::remove(float key)
           break;
         }
       }
+      //cout << "leftsibli" << leftSibling << " rightsib" << rightSibling << endl;
+
     }
 
     // now that we have found the leaf node that might contain the key, we will try and find the position of the key here (if exists)
     // search if the key to be deleted exists in this bplustree
     bool found = false;
-    int pos;
+    int pos=0;
     // also works for duplicates
-    for (pos = 0; pos < cursor->numKeys; pos++)
-    {
-      if (cursor->keys[pos] == key)
-      {
+    Node *temp = cursor;
+    while(true){
+      if(key == temp->keys[pos]){
         found = true;
         break;
       }
+      if(key < temp->keys[pos]){
+        break;
+      }
+      if(pos == temp->numKeys-1){
+        temp = (Node*) temp->pointers[temp->numKeys];
+        pos = 0;
+      }else
+        pos++;
     }
 
     // If key to be deleted does not exist in the tree, return error.
@@ -585,18 +658,17 @@ void BPlusTree::remove(float key)
     }
 
     // pos is the position where we found the key.
-    // We must delete the entire linked-list before we delete the key, otherwise we lose access to the linked list head.
-    Node *temp = cursor;
+    cursor = temp;
+    //Node *temp2 = temp;
     int temppos = pos;
     int keyshiftcount=0;
     int nodeshiftcount = 0;
-    
-    while(temp->keys[temppos] == key){
+
+    while(true){
       keyshiftcount++;
       temppos ++;
-
       if(temppos == temp->numKeys || temp->keys[temppos] != key){
-        for (int i = pos; i < temp->numKeys; i++)
+        for (int i = temppos-1; i < temp->numKeys ; i++)
         {
           temp->keys[i] = temp->keys[i + keyshiftcount];
           temp->pointers[i] = temp->pointers[i + keyshiftcount];
@@ -609,15 +681,22 @@ void BPlusTree::remove(float key)
         {
           temp->pointers[i] = nullptr;
         }
+        if(temp->keys[temppos] != key){
+          nodeshiftcount++;
+          break;
+        }
 
         temp = (Node*)temp->pointers[temp->numKeys];
         temppos = 0;
         keyshiftcount = 0;
         //if(temp->keys[temppos]==key)
         nodeshiftcount++;
+
       }
 
-    }
+    // }
+    // cout << nodeshiftcount << "nodeshiftcnt" << endl;
+    // cout << "leftsibli" << leftSibling << " rightsib" << rightSibling << endl;
     // If current node is root, check if tree still has keys.
     if (cursor == root)
     {
@@ -637,7 +716,7 @@ void BPlusTree::remove(float key)
 
       //return numNodesDeleted;
     }
-    temp = cursor;
+    
     for(int n = 0; n < nodeshiftcount; n++){
       // If we didn't delete from root, we check if we have minimum keys ⌊(n+1)/2⌋ for leaf.
       if (cursor->numKeys >= (maxKeys + 1) / 2)
@@ -649,6 +728,7 @@ void BPlusTree::remove(float key)
         // int numNodesDeleted = numNodes - index->getAllocated();
         // return numNodesDeleted;
         cursor = (Node*)cursor->pointers[cursor->numKeys];
+        cout << "not underflowwww\n" ;
         continue;
       }
 
@@ -687,7 +767,17 @@ void BPlusTree::remove(float key)
 
           // Update parent node's key
           //!!!check duplicate TT
-          parent->keys[leftSibling] = cursor->keys[0];
+          if(search(cursor->keys[0], false, false) == cursor ){
+            parent->keys[leftSibling] = cursor->keys[0];
+          }
+          else{
+            int check = 0;
+            while( search(cursor->keys[check],false,false) != cursor && check < cursor->numKeys){
+              check++;
+            }
+            parent->keys[leftSibling] =  (check == cursor->numKeys)? std::nan(""):cursor->keys[check];
+
+          }
 
           // update numNodes and numNodesDeleted after deletion
           // int numNodesDeleted = numNodes - index->getAllocated();
@@ -718,6 +808,8 @@ void BPlusTree::remove(float key)
           cursor->pointers[cursor->numKeys] = rightNode->pointers[0];
           cursor->numKeys++;
           rightNode->numKeys--;
+          
+          cout<<rightNode->keys[0]<<"\n";
 
           // Update right sibling (shift keys and pointers left)
           for (int i = 0; i < rightNode->numKeys; i++)
@@ -730,8 +822,17 @@ void BPlusTree::remove(float key)
           rightNode->pointers[cursor->numKeys] = rightNode->pointers[cursor->numKeys + 1];
 
           // Update parent node's key to be new lower bound of right sibling.
-          parent->keys[rightSibling - 1] = rightNode->keys[0];
+          if(search(cursor->keys[0], false, false) == cursor ){\
+            parent->keys[rightSibling - 1] = rightNode->keys[0];
+          }
+          else{
+            int check = 0;
+            while( search(cursor->keys[check],false,false) != cursor && check < cursor->numKeys){
+              check++;
+            }
+            parent->keys[rightSibling - 1] = (check == cursor->numKeys)? std::nan(""):rightNode->keys[0];
 
+          }
           // update numNodes and numNodesDeleted after deletion
           // int numNodesDeleted = numNodes - index->getAllocated();
           // numNodes = index->getAllocated();
@@ -788,12 +889,24 @@ void BPlusTree::remove(float key)
         cursor->numKeys += rightNode->numKeys;
         cursor->pointers[cursor->numKeys] = rightNode->pointers[rightNode->numKeys];
 
+        // if(search(cursor->keys[0], false, false) == cursor ){
+        //     parent->keys[leftSibling] = cursor->keys[0];
+        //   }
+        //   else{
+        //     int check = 0;
+        //     while( search(cursor->keys[check],false,false) != cursor && check < cursor->numKeys){
+        //       check++;
+        //     }
+        //     parent->keys[leftSibling] =  (check == cursor->numKeys)? std::nan(""):cursor->keys[check];
+
+        //   }
+          
         // We need to update the parent in order to fully remove the right node.
         removeInternal(parent->keys[rightSibling - 1], parent, rightNode);
 
         // Now that we have updated parent, we can just delete the right node from disk.
-        delete[] cursor->keys;
-        delete[] cursor->pointers;
+        delete[] rightNode->keys;
+        delete[] rightNode->pointers;
         //delete cursor;
       }
       cursor = (Node*)cursor->pointers[cursor->numKeys];
@@ -805,7 +918,7 @@ void BPlusTree::remove(float key)
     // return numNodesDeleted;
     return;
     }
-    
+  }  
 }
 
 
@@ -866,10 +979,11 @@ void BPlusTree::removeInternal(float key, Node *cursor, Node *child)
   // Aka we need to delete an internal node (possibly recursively).
   int pos;
 
+
   // Search for key to delete in parent based on child's lower bound key.
   for (pos = 0; pos < cursor->numKeys; pos++)
   {
-    if (cursor->keys[pos] == key)
+    if (cursor->keys[pos] == key || (isnan(cursor->keys[pos])&&isnan(key)))
     {
       break;
     }
@@ -1081,6 +1195,32 @@ void BPlusTree::removeInternal(float key, Node *cursor, Node *child)
   }
 }
 
+int BPlusTree::checkDuplicate(float key){
+  Node* cursor = search(key,false,false);
+  if(cursor==NULL){
+    return 0;
+  }
+  else{
+    int count, pos;
+    for(pos= 0; pos < cursor->numKeys; pos++){
+      if(cursor->keys[pos]==key)break;
+    }
+    while(cursor->keys[pos] == key){
+      count++;
+      pos ++;
+
+      if(pos == cursor->numKeys){
+
+        cursor = (Node*)cursor->pointers[cursor->numKeys];
+        pos = 0;
+      }
+    
+
+  }
+  cout << "Duplicate count" << "\n";
+  return count;
+}
+}
 int main() {
   BPlusTree node;
   char a = 't';
@@ -1090,10 +1230,14 @@ int main() {
   node.insert(&a,10);
   node.insert(&a,10);
   node.insert(&a,9);
+  node.insert(&a,10);
+  //node.display();
+  node.insert(&a,8);
+  node.insert(&a,8);
   node.insert(&a,8);
   node.insert(&a,7);
-  node.insert(&a,6);
-  node.remove(10);
+  // node.insert(&a,6);
+  //node.remove(11);
 
   node.display();
-}
+ }
