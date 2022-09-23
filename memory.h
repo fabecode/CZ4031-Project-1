@@ -5,17 +5,16 @@
 #include <string>
 #include <unordered_map>
 #include <tuple>
-#include <cstdint>
 
 struct record {
-    char tconst[10];
+    char tconst[11];
     float averageRating;
     int numVotes;
 };
 
 struct block {
     std::vector<record> records;
-    uint16_t size;
+    int size;
 };
 
 class disk {
