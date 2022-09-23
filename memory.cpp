@@ -25,7 +25,7 @@ void disk::readDataFromFile(std::string filePath) {
     }
 
     // initialise block with empty record vector, and blocksize (either 200 or 500)
-    block tblock = {std::vector<record>(), disk::blocksize};
+    block tblock = {std::vector<record>(), (int) (disk::blocksize - sizeof(int)) };
     //block{(std::__1::vector<record>)dynamic-init: <constructor-call>, (uint16_t)(uint16_t)(blocksize)}
     std::string str;
     float avgRate;
@@ -57,7 +57,7 @@ void disk::readDataFromFile(std::string filePath) {
             disk::numBlocks += 1;
 
             // create and insert new block
-            tblock = block { std::vector<record>(), disk::blocksize };
+            tblock = block { std::vector<record>(), (int) (disk::blocksize - sizeof(int)) };
             tblock.records.push_back(tRecord);
             tblock.size = tblock.size - 19;
         }
@@ -89,8 +89,8 @@ void disk::insertRecords(std::string tconst, float averageRating, int numVotes) 
         }
     }
 
-    // all blocks are full, allocate a new block
-    block tBlock = {std::vector<record>(), disk::blocksize};
+    // all blocks are full, allocate a new block,
+    block tBlock = {std::vector<record>(), (int) (disk::blocksize - sizeof(int))};
     blocks.push_back(tBlock);
     tBlock.records.push_back(tRecord);
     tBlock.size = tBlock.size - 19;
@@ -114,7 +114,7 @@ void disk::deleteRecord(std::string key) {
         }), currentBlock->records.end());
 
         // update remaining size of block
-        currentBlock->size = (int) (disk::blocksize - (currentBlock->records.size() * 19));
+        currentBlock->size = (int) (disk::blocksize - sizeof(int) - (currentBlock->records.size() * 19));
         if (currentBlock->records.empty()) {
             emptyBlock = true;
         }
