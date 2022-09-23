@@ -1221,9 +1221,9 @@ int BPlusTree::checkDuplicate(float key){
   return count;
 }
 }
-int main() {
-  BPlusTree node;
-  char a = 't';
+// int main() {
+//   BPlusTree node;
+//   char a = 't';
 
 //  node.insert(&a,12);
 //  node.insert(&a,11);
@@ -1233,7 +1233,7 @@ int main() {
 //  node.insert(&a,8);
 // node.insert(&a,7);
 //  node.insert(&a,6);
-//  node.remove(10);
+// //  node.remove(10);
 
-//  node.display();
-//}
+//   node.display();
+// }
