@@ -3,10 +3,17 @@
 #include <fstream>
 #include <string>
 #include <algorithm>
+#include <cstring>
 
 using namespace std;
 
-disk::disk(int bsize) {
+int getOffset(int size) {
+    return (int) (size - sizeof(int)) / 19;
+}
+
+disk::disk(int capacity, int bsize) {
+    disk::capacity = capacity;
+    disk::timesAccessed = 0;
     disk::size = 0;
     disk::blocksize = bsize;
     disk::numBlocks = 0;
@@ -24,17 +31,17 @@ void disk::readDataFromFile(std::string filePath) {
         exit(1);
     }
 
-    // initialise block with empty record vector, and blocksize (either 200 or 500)
-    block tblock = {std::vector<record>(), (int) (disk::blocksize - sizeof(int)) };
-    //block{(std::__1::vector<record>)dynamic-init: <constructor-call>, (uint16_t)(uint16_t)(blocksize)}
+    // initialise a new block (either 200 or 500 - size of header)
+    block tblock = {operator new (disk::blocksize - sizeof(int)), (int) sizeof(int) };
     std::string str;
     float avgRate;
     int nVotes, i=0;
 
+    // reads all records from file
     while (infile.peek() != EOF) {
         //consume the first line
         if (i==0) {
-            i++;
+            i += 1;
             infile >> str >> str >> str;
             continue;
         }
@@ -45,86 +52,123 @@ void disk::readDataFromFile(std::string filePath) {
         str.copy(tRecord.tconst, str.length(), 0);
         tRecord.tconst[str.length()] = '\0';
 
-        // if current block is not full, block.size >= 0
-        if (tblock.size - 19 >= 0) {
-            tblock.records.push_back(tRecord);
-            tblock.size = tblock.size - 19;
-            // current block is full, we push into the disk and create a new block to insert the new record
+        // if there is space for a new record
+        if (tblock.size + 19 < disk::blocksize) {
+            std::memcpy((char *) tblock.records+ getOffset(tblock.size)*sizeof(record), &tRecord, sizeof(record));
+            tblock.size += 19;
         } else {
-            // updating disk statistics
+            // block is full, add it to disk
             disk::blocks.push_back(tblock);
-            disk::size += disk::blocksize;
             disk::numBlocks += 1;
+            disk::size += disk::blocksize;
 
-            // create and insert new block
-            tblock = block { std::vector<record>(), (int) (disk::blocksize - sizeof(int)) };
-            tblock.records.push_back(tRecord);
-            tblock.size = tblock.size - 19;
+            // we reached the max capacity and cannot allocate a new block
+            if (diskFull()) {
+                std::cout << "Unable to insert more records, disk is full." << std::endl;
+            }
+
+            // disk has space for a new block, add the record to the block
+            tblock = {operator new (disk::blocksize - sizeof(int)), sizeof(int) };
+            std::memcpy((char *) tblock.records+getOffset(tblock.size)*sizeof(record), &tRecord, sizeof(record));
+            tblock.size += 19;
         }
     }
 
-    // adding the final block if there are records
-    if (!tblock.records.empty()) {
+    // add the last block into the disk if disk is not full and there are records in the last block
+    if (tblock.size > sizeof(int) && !diskFull()) {
         disk::blocks.push_back(tblock);
-        disk::size += disk::blocksize;
         disk::numBlocks += 1;
+        disk::size += disk::blocksize;
     }
-
 }
 
 // insert a new tuple into disk
-void disk::insertRecords(std::string tconst, float averageRating, int numVotes) {
+void disk::insertRecord(std::string tconst, float averageRating, int numVotes) {
     record tRecord = record();
     tRecord.averageRating = averageRating;
     tRecord.numVotes = numVotes;
     tconst.copy(tRecord.tconst, tconst.length(), 0);
     tRecord.tconst[tconst.length()] = '\0';
 
-    // find a suitable block to insert record
-    for (int i=0; i<disk::numBlocks; i++) {
-        if (blocks[i].size - 19 >= 0) {
-            blocks[i].records.push_back(tRecord);
-            blocks[i].size = blocks[i].size - 19;
+    // try inserting to the last block if there is space
+    if (!disk::blocks.empty() && disk::blocks.back().size + 19 < disk::blocksize) {
+        block *tblock = &(disk::blocks.back());
+        std::memcpy((char *) tblock->records+getOffset(tblock->size)*sizeof(record), &tRecord, sizeof(record));
+        tblock->size += 19;
+    } else {
+        // No previously reclaimed space, and we cannot insert a new block
+        if (diskFull() && disk::freed.empty()) {
+            std::cout << "Unable to insert new record, disk has reached max capacity." << std::endl;
             return;
         }
+
+        // there is a previously freed space, use it
+        if (!freed.empty()) {
+            // get the first freed pair
+            std::pair<int, void *> i = freed[0];
+            freed.erase(freed.begin());
+            // retrieve the block
+            block *tBlock = &(disk::blocks[i.first]);
+            // add the record into the address pointed by the second item in the pair
+            std::memcpy((char *) tBlock->records+getOffset(tBlock->size)*sizeof(record), &tRecord, sizeof(record));
+        } else { // no previously freed space, and disk can accommodate another block
+            // all blocks are full (or disk empty), allocate a new block
+            block tBlock = {operator new (disk::blocksize - sizeof(int)), (int) sizeof(int) };
+            std::memcpy((char *) tBlock.records+getOffset(tBlock.size)*sizeof(record), &tRecord, sizeof(record));
+            tBlock.size += 19;
+
+            // update disk
+            disk::blocks.push_back(tBlock);
+            disk::size += disk::blocksize;
+            disk::numBlocks += 1;
+        }
     }
-
-    // all blocks are full, allocate a new block,
-    block tBlock = {std::vector<record>(), (int) (disk::blocksize - sizeof(int))};
-    blocks.push_back(tBlock);
-    tBlock.records.push_back(tRecord);
-    tBlock.size = tBlock.size - 19;
-
-    // update disk
-    disk::size += disk::blocksize;
-    disk::numBlocks += 1;
 }
 
 // deletes a record from disk based on key (tconst)
 void disk::deleteRecord(std::string key) {
-    // for each block in disk
+    bool found = false;
     bool emptyBlock = false;
+    int index = -1;
 
+    // for each block in disk
     for (int i=0; i<disk::numBlocks; i++) {
         block *currentBlock = &(disk::blocks[i]);
-
-        // remove record if record.tconst == key
-        currentBlock->records.erase(remove_if(currentBlock->records.begin(), currentBlock->records.end(), [&](record const &r) {
-            return r.tconst == key;
-        }), currentBlock->records.end());
-
-        // update remaining size of block
-        currentBlock->size = (int) (disk::blocksize - sizeof(int) - (currentBlock->records.size() * 19));
-        if (currentBlock->records.empty()) {
-            emptyBlock = true;
+        int items = (int) (currentBlock->size - sizeof(int)) / 19;
+        // for each record in the block
+        for (int j=0; j<items; j++) {
+            record tRecord;
+            std::memcpy(&tRecord, (char *) currentBlock->records+sizeof(record)*j, sizeof(record));
+            // if the record matches
+            if (tRecord.tconst == key) {
+                // track the block and address where we can insert a new record
+                freed.push_back(make_pair(i, (char *) currentBlock->records+sizeof(record)*j));
+                // erase the old record
+                memset((char *)currentBlock->records+sizeof(record)*j, '\0',sizeof(record));
+                // update block size
+                currentBlock->size -= 19;
+                found = true;
+                emptyBlock = (currentBlock->size - sizeof(int) == 0);
+                if (emptyBlock) {
+                    index = i;
+                }
+            }
+        }
+        if (found) {
+            break;
         }
     }
 
     // we remove the block if its empty from the disk
     if (emptyBlock) {
-        disk::blocks.erase(remove_if(disk::blocks.begin(), disk::blocks.end(), [&](block const &b) {
-            return b.records.empty();
-        }), disk::blocks.end());
+        // since the block is being removed, we no longer need to track if the block has space for a new record
+        disk::freed.erase(remove_if(disk::freed.begin(), disk::freed.end(), [&](std::pair<int, char*> p) {
+            return p.first == index;
+        }), disk::freed.end());
+
+        // remove the block
+        disk::blocks.erase(disk::blocks.begin() + index);
+        // update disk
         disk::numBlocks -= 1;
         disk::size -= disk::blocksize;
     }
@@ -132,22 +176,37 @@ void disk::deleteRecord(std::string key) {
 
 // sanity check
 void disk::printitems() {
-    for (int i=0; i<disk::blocks.size(); i++) {
-        std::vector<record> temp = blocks[i].records;
-        std::cout << blocks[i].size << std::endl;
-        for (int j=0; j<temp.size(); j++) {
-            std::cout << temp[j].tconst << " " << temp[j].averageRating << " " << temp[j].numVotes << std::endl;
+    char testBlock[sizeof(record)];
+    memset(testBlock, '\0', sizeof(record));
+    for (int i=0; i<disk::numBlocks; i++) {
+        block b = disk::blocks[i];
+        int items = (int) (b.size - sizeof(int)) / 19;
+        for (int j=0; j<items; j++) {
+            record tt;
+
+            std::memcpy(&tt, (char *) b.records+sizeof(record)*j, sizeof(record));
+            if (memcmp(&tt, testBlock, sizeof(record)) != 0){
+                cout << tt.tconst << " " << tt.averageRating << " " << tt.numVotes << endl;
+            }
         }
     }
 }
 
 // returns a reference to the disk, used to build the bp tree
 std::vector<block> *disk::getBlock() {
-    return &(disk::blocks);
+    return (&(disk::blocks));
+}
+
+block disk::getBlock(int index) {
+    return (disk::blocks[index]);
 }
 
 // output disk statistics
 void disk::reportStatistics() {
     std::cout << "Number of Blocks used: " << disk::numBlocks << "." << std::endl;
-    std::cout << "Database size (MB): " << ((disk::size*1.0) / 1048576) << "." << std::endl;
+    std::cout << "Database size (MB): " << ((disk::size*1.0) / 1000000) << "." << std::endl;
+}
+
+bool disk::diskFull() {
+    return disk::capacity == disk::size;
 }
