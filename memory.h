@@ -13,7 +13,6 @@ struct record {
 
 struct block {
     void *records;
-    //std::vector<record> records;
     int size;
 };
 

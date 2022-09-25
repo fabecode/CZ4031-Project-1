@@ -31,8 +31,8 @@ void disk::readDataFromFile(std::string filePath) {
         exit(1);
     }
 
-    // initialise a new block (either 200 or 500 - size of header)
-    block tblock = {operator new (disk::blocksize - sizeof(int)), (int) sizeof(int) };
+    // initialise a new block (either 200 or 500), use 4 bytes for an integer header
+    block tblock = {operator new (disk::blocksize), (int) sizeof(int) };
     std::string str;
     float avgRate;
     int nVotes, i=0;
@@ -60,25 +60,29 @@ void disk::readDataFromFile(std::string filePath) {
             // block is full, add it to disk
             disk::blocks.push_back(tblock);
             disk::numBlocks += 1;
-            disk::size += disk::blocksize;
+            // only track used bytes
+            disk::size += tblock.size;
 
             // we reached the max capacity and cannot allocate a new block
             if (diskFull()) {
                 std::cout << "Unable to insert more records, disk is full." << std::endl;
+                return;
             }
 
             // disk has space for a new block, add the record to the block
-            tblock = {operator new (disk::blocksize - sizeof(int)), sizeof(int) };
+            tblock = {operator new (disk::blocksize), sizeof(int) };
             std::memcpy((char *) tblock.records+getOffset(tblock.size)*sizeof(record), &tRecord, sizeof(record));
             tblock.size += 19;
         }
     }
 
-    // add the last block into the disk if disk is not full and there are records in the last block
+    // add the last block into the disk if disk is not full and there are records in the last block, and
+    // adding the last block does not exceed the size
     if (tblock.size > sizeof(int) && !diskFull()) {
         disk::blocks.push_back(tblock);
         disk::numBlocks += 1;
-        disk::size += disk::blocksize;
+        // only track used bytes
+        disk::size += tblock.size;
     }
 }
 
@@ -90,36 +94,41 @@ void disk::insertRecord(std::string tconst, float averageRating, int numVotes) {
     tconst.copy(tRecord.tconst, tconst.length(), 0);
     tRecord.tconst[tconst.length()] = '\0';
 
-    // try inserting to the last block if there is space
+    // try inserting to the last block if there is space in the block and on the disk
     if (!disk::blocks.empty() && disk::blocks.back().size + 19 < disk::blocksize) {
         block *tblock = &(disk::blocks.back());
         std::memcpy((char *) tblock->records+getOffset(tblock->size)*sizeof(record), &tRecord, sizeof(record));
         tblock->size += 19;
+        // count the bytes used
+        disk::size += 19;
+        return;
     } else {
         // No previously reclaimed space, and we cannot insert a new block
-        if (diskFull() && disk::freed.empty()) {
-            std::cout << "Unable to insert new record, disk has reached max capacity." << std::endl;
+        if (disk::freed.empty() && diskFull()) {
+            std::cout << "Unable to insert new records, disk has reached max capacity." << std::endl;
             return;
         }
-
         // there is a previously freed space, use it
         if (!freed.empty()) {
             // get the first freed pair
             std::pair<int, void *> i = freed[0];
             freed.erase(freed.begin());
-            // retrieve the block
+            // retrieve the block (simulate block access)
             block *tBlock = &(disk::blocks[i.first]);
             // add the record into the address pointed by the second item in the pair
-            std::memcpy((char *) tBlock->records+getOffset(tBlock->size)*sizeof(record), &tRecord, sizeof(record));
-        } else { // no previously freed space, and disk can accommodate another block
+            std::memcpy((char *) i.second, &tRecord, sizeof(record));
+            // count the bytes used
+            tBlock->size += 19;
+            disk::size += 19;
+        } else {// no previously freed space, and disk can accommodate another block
             // all blocks are full (or disk empty), allocate a new block
-            block tBlock = {operator new (disk::blocksize - sizeof(int)), (int) sizeof(int) };
+            block tBlock = {operator new (disk::blocksize), (int) sizeof(int) };
             std::memcpy((char *) tBlock.records+getOffset(tBlock.size)*sizeof(record), &tRecord, sizeof(record));
             tBlock.size += 19;
 
             // update disk
             disk::blocks.push_back(tBlock);
-            disk::size += disk::blocksize;
+            disk::size += tBlock.size;
             disk::numBlocks += 1;
         }
     }
@@ -147,6 +156,8 @@ void disk::deleteRecord(std::string key) {
                 memset((char *)currentBlock->records+sizeof(record)*j, '\0',sizeof(record));
                 // update block size
                 currentBlock->size -= 19;
+                // update disk size
+                disk::size -= 19;
                 found = true;
                 emptyBlock = (currentBlock->size - sizeof(int) == 0);
                 if (emptyBlock) {
@@ -165,12 +176,12 @@ void disk::deleteRecord(std::string key) {
         disk::freed.erase(remove_if(disk::freed.begin(), disk::freed.end(), [&](std::pair<int, char*> p) {
             return p.first == index;
         }), disk::freed.end());
-
         // remove the block
         disk::blocks.erase(disk::blocks.begin() + index);
         // update disk
         disk::numBlocks -= 1;
-        disk::size -= disk::blocksize;
+        // no longer need to track this
+        // disk::size -= disk::blocksize;
     }
 }
 
@@ -198,6 +209,8 @@ std::vector<block> *disk::getBlock() {
 }
 
 block disk::getBlock(int index) {
+    // everytime we retrieve a block, increment the access time
+    disk::increaseTimesAccessed();
     return (disk::blocks[index]);
 }
 
@@ -207,6 +220,7 @@ void disk::reportStatistics() {
     std::cout << "Database size (MB): " << ((disk::size*1.0) / 1000000) << "." << std::endl;
 }
 
+// check if we can add a new block without exceeding capacity
 bool disk::diskFull() {
-    return disk::capacity == disk::size;
+    return (disk::size + disk::blocksize) > disk::capacity;
 }
