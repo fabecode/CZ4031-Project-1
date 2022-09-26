@@ -45,6 +45,8 @@ private:
 
   Node *findParent(Node *, Node *);
 
+  int checkDuplicate(float key);
+
 public:
   // Methods
 
@@ -53,16 +55,10 @@ public:
 
   //search
   //void search(float lowerBoundKey, float upperBoundKey);
-  Node* search(int x, bool flag, bool print);
+  Node* search(float x, bool flag, bool print);
 
   //print B+ tree
   void display();
-
-  //print node and content
-  void displayNode(Node *node);
-
-  //print block with its data
-  void displayBlock(void *block);
 
   void insert(void* address,float key);
 

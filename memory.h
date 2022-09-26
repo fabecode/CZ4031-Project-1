@@ -4,48 +4,66 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
-#include <tuple>
-#include <cstdint>
 
 struct record {
-    char tconst[10];
+    char tconst[11];
     float averageRating;
     int numVotes;
 };
 
 struct block {
-    std::vector<record> records;
-    uint16_t size;
+    void *records;
+    int size;
 };
 
 class disk {
-private:
-    std::vector<block> blocks;
-    int size;
-    int blocksize;
-    int numBlocks;
-public:
-    disk(int blocksize);
+    private:
+        std::vector<block> blocks;
+        std::vector<std::pair<int, char *>> freed;
+        int size;
+        int blocksize;
+        int numBlocks;
+        int capacity;
+        int timesAccessed;
+    public:
+        disk(int capacity, int blocksize);
 
-    ~disk();
+        ~disk();
 
-    // prints all records in the database
-    void printitems();
+        // prints all records in the database - remove later
+        void printitems();
 
-    // create disk by reading from file
-    void readDataFromFile(std::string filePath);
+        // create disk by reading from file
+        void readDataFromFile(std::string filePath);
 
-    // returns a reference to the disk, used to build the bp tree
-    std::vector<block> *getBlock();
+        // returns a reference to the disk, used to build the bp tree
+        std::vector<block> *getBlock();
 
-    // output the number of blocks used and the size of the database
-    void reportStatistics();
+        // simulates a block access
+        block getBlock(int index);
 
-    // insert new record into empty block
-    void insertRecords(std::string tconst, float averageRating, int numVotes);
+        // output the number of blocks used and the size of the database
+        void reportStatistics();
 
-    // deletes a record based on the key
-    void deleteRecord(std::string key);
+        // insert new record into empty block
+        void insertRecord(std::string tconst, float averageRating, int numVotes);
+
+        // deletes a record based on the key
+        void deleteRecord(std::string key);
+
+        bool diskFull();
+
+        int getTimesAccessed() {
+            return disk::timesAccessed;
+        }
+
+        void increaseTimesAccessed() {
+            disk::timesAccessed += 1;
+        }
+
+        void resetTimesAccessed() {
+            disk::timesAccessed = 0;
+        }
 };
 
 #endif
