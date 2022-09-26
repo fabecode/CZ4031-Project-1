@@ -220,7 +220,14 @@ void disk::reportStatistics() {
     std::cout << "Database size (MB): " << ((disk::size*1.0) / 1000000) << "." << std::endl;
 }
 
+// return number of blocks
+int disk::getNumBlocks() {
+    return disk::numBlocks;
+}
+
+
 // check if we can add a new block without exceeding capacity
 bool disk::diskFull() {
     return (disk::size + disk::blocksize) > disk::capacity;
 }
+

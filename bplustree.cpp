@@ -18,7 +18,7 @@ Node::Node(int maxKeys)
   // Initialize array with key and ptr
   keys = new float[maxKeys];
   pointers = new void*[maxKeys + 1];
-
+  isLeaf = false;
   numKeys = 0;
 }
 
@@ -54,6 +54,8 @@ void BPlusTree::insert(void *address, float key)
     root->isLeaf = true; // It is both the root and a leaf.
     root->numKeys = 1;
     root->pointers[0] = address; // Add record's disk address to pointer.
+    root->pointers[1] = &myNullPtr; // Add null pointer to end of pointers array.
+    numNodes++;
 
   }
   // Else if root exists already, traverse the nodes to find the proper place to insert the key.
@@ -89,7 +91,7 @@ void BPlusTree::insert(void *address, float key)
 
     // When we reach here, it means we have hit a leaf node. Let's find a place to put our new record in.
     // If this leaf node still has space to insert a key, then find out where to put it.
-    if (cursor->numKeys < maxKeys)
+    if (cursor->numKeys + 1 <= maxKeys)
     {
       int i = 0;
       // While we haven't reached the last key and the key we want to insert is larger than current key, keep moving forward.
@@ -120,6 +122,7 @@ void BPlusTree::insert(void *address, float key)
     // Overflow: If there's no space to insert new key, we have to split this node into two and update the parent if required.
     else
     {
+      numNodes++;
       // Create a new leaf node to put half the keys and pointers in.
       Node *newLeaf = new Node(maxKeys);
 
@@ -215,8 +218,8 @@ void BPlusTree::insert(void *address, float key)
     }
   }
 
-  // update numnodes ---- jw: not sure if this is required
-//  numNodes = index->Allocated();
+  // update numnodes 
+  //numNodes = index->getNumBlocks();
 }
 
 // Updates the parent node to point at both child nodes, and adds a parent node if needed.
@@ -261,6 +264,7 @@ void BPlusTree::insertInternal(float key, Node *cursor, Node *child)
     // Make new internal node (split this parent node into two).
     // Note: We DO NOT add a new key, just a new pointer!
     Node *newInternal = new Node(maxKeys);
+    numNodes++;
 
     // Same logic as above, keep a temp list of keys and pointers to insert into the split nodes.
     // Now, we have one extra pointer to keep track of (new child's pointer).
@@ -356,7 +360,7 @@ void BPlusTree::insertInternal(float key, Node *cursor, Node *child)
     // If current cursor is the root of the tree, we need to create a new root.
     if (cursor == root)
     {
-      Node *newRoot = new Node(nodeSize);
+      Node *newRoot = new Node(maxKeys);
       // Update newRoot to hold the children.
       // Take the rightmost key of the old parent to be the root.
       // Although we threw it away, we are still using it to denote the leftbound of the old child.
@@ -462,6 +466,47 @@ Node *BPlusTree::search(float x, bool flag, bool printer)
     return NULL;
 }
 
+// Display a node and its contents in the B+ Tree.
+void BPlusTree::displayNode(Node *node)
+{
+  // Print out all contents in the node as such |pointer|key|pointer|
+  int i = 0;
+  std::cout << "|";
+  for (int i = 0; i < node->numKeys; i++)
+  {
+    std::cout << node->pointers[i] << " | ";
+    std::cout << node->keys[i] << " | ";
+  }
+
+  // Print last filled pointer
+  if (node->pointers[node->numKeys] == nullptr) {
+    std::cout << " Null |";
+  }
+  else {
+    std::cout << node->pointers[node->numKeys] << "|";
+  }
+
+  for (int i = node->numKeys; i < maxKeys; i++)
+  {
+    std::cout << " x |";      // Remaining empty keys
+    std::cout << "  Null  |"; // Remaining empty pointers
+  }
+
+  std::cout << endl;
+}
+
+int BPlusTree::getHeight(Node* node){
+  //  if(node->isLeaf==false){
+  //      return BPlusTree::getHeight(node->pointers[0])+1;
+  //  }
+  //  else if(node->isLeaf==true){
+        return 1;
+  //  }
+  //  else{
+  //      return NULL;
+  //  }
+}
+
 void BPlusTree::displayTree(Node *cursor, std::vector<std::string> *s, int *level){
   if(cursor->isLeaf){
     cout << "Enter leaf\n";
@@ -530,7 +575,7 @@ void BPlusTree::display() {
 void BPlusTree::remove(float key)
 {
   // set numNodes before deletion
- // numNodes = index->getAllocated();
+ //numNodes = index->getNumBlocks();
 
   // Tree is empty.
   if (root == nullptr)
@@ -651,8 +696,8 @@ void BPlusTree::remove(float key)
       std::cout << "Can't find specified key " << key << " to delete!" << endl;
       
       // update numNodes and numNodesDeleted after deletion
-      // int numNodesDeleted = numNodes - index->getAllocated();
-      // numNodes = index->getAllocated();
+      // int numNodesDeleted = numNodes - index->getNumBlocks();;
+      // numNodes = index->getNumBlocks();;
       // return numNodesDeleted;
       return;
     }
@@ -710,6 +755,7 @@ void BPlusTree::remove(float key)
         
       }
       std::cout << "Successfully deleted " << key << endl;
+      numNodes--;
       
       // update numNodes and numNodesDeleted after deletion
       //int numNodesDeleted = numNodes - index->getAllocated();

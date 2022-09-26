@@ -19,7 +19,7 @@ struct block {
 class disk {
     private:
         std::vector<block> blocks;
-        std::vector<std::pair<int, char *>> freed;
+        std::vector<std::pair<int, char*>> freed;
         int size;
         int blocksize;
         int numBlocks;
@@ -44,6 +44,9 @@ class disk {
 
         // output the number of blocks used and the size of the database
         void reportStatistics();
+
+        // return number of blocks 
+        int getNumBlocks();
 
         // insert new record into empty block
         void insertRecord(std::string tconst, float averageRating, int numVotes);

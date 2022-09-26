@@ -22,7 +22,7 @@ int main(int argc, char **argv) {
     disk *Disk = new disk(150000000, 200); // 150MB
     //disk *DiskIndex = new disk(350); // 350MB
     std::vector<block> *diskBlock = Disk->getBlock();
-    Disk->readDataFromFile("./data.tsv");
+    Disk->readDataFromFile("./datadata.tsv");
 
     // Report statistics
     Disk->reportStatistics();
@@ -52,9 +52,15 @@ int main(int argc, char **argv) {
 
     std::cout << "Parameter n of the B+ tree    : " << bplustree.getMaxKeys() << endl;
     std::cout << "Number of nodes of the B+ tree: " << bplustree.getNumNodes() << endl; //numnodes to be updated
-    std::cout << "Height of the B+ tree         : " << bplustree.getDegree() << endl; //height to be updated
+    std::cout << "Height of the B+ tree         : " << bplustree.getHeight(bplustree.getRoot()) << endl; //height to be updated
     std::cout << "Root nodes and 1st child node : " << endl;
-    bplustree.display();
+
+    cout << "\nRoot Node: " << endl;
+    bplustree.displayNode(bplustree.getRoot()); //getRoot gets the root address
+    cout << bplustree.getRoot() << endl;
+    cout << "\n1st Child Node: " << endl;
+    
+
 
     /*
     =============================================================
@@ -68,11 +74,13 @@ int main(int argc, char **argv) {
 
     std::cout << "\n==================Experiment 3==================" << endl;
     std::cout << "Retrieve movies with numVotes equal to 500..." << endl;
+    bplustree.search(500, true, false);
+
     std::cout << endl;
     std::cout << "Number of index nodes the process accesses: " << endl;
     std::cout << "Content of index nodes (first 5 nodes): " << endl;
     std::cout << "Average of averageRating's of the records returned: " << endl;
-    std::cout << "\nNo more records found for range " << 8.0 << " to " << 8.0 << endl;
+
     /*
     =============================================================
     Experiment 4:
@@ -88,5 +96,18 @@ int main(int argc, char **argv) {
     std::cout << "Number of data blocks the process accesses: " << endl;
     std::cout << "Content of data blocks the process accesses: " << endl;
     std::cout << "Average of averageRating's of the records that are returned: " << endl;
+
+
+    /*
+    =============================================================
+    Experiment 5:
+    Delete movies with the attribute “numVotes” equal to 1000, update the B + tree accordingly,
+    and report the following statistics:
+    - The number of times that a node is deleted(or two nodes are merged) during the process of the updating the B + tree;
+    - The number nodes of the updated B + tree;
+    - The height of the updated B + tree;
+    - The root node and its 1st child nodes of the updated B + tree;
+    =============================================================
+    */
 
 }
