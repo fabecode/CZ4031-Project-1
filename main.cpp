@@ -155,9 +155,9 @@ int main(int argc, char **argv) {
 
     std::cout << "Number of index nodes the process accesses: " << bplustree.getHeight(bplustree.getRoot()) - 1<< endl;
     std::cout << "Content of index nodes the process accesses: " << endl;
-    vector<Node *> index = bplustree.getT();    
+    vector<Node *> indexT = bplustree.getT();
     for (int i=0; i<index.size(); i++) {
-        bplustree.displayNode(index[i]);
+        bplustree.displayNode(indexT[i]);
         if (i >= 5) {
             break;
         }

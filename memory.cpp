@@ -97,11 +97,12 @@ char *disk::insertRecord(std::string tconst, float averageRating, int numVotes) 
     // try inserting to the last block if there is space in the block and on the disk
     if (!disk::blocks.empty() && disk::blocks.back().size + 19 < disk::blocksize) {
         block *tblock = &(disk::blocks.back());
-        std::memcpy((char *) tblock->records+getOffset(tblock->size)*sizeof(record), &tRecord, sizeof(record));
+        char *addr = (char *)tblock->records+getOffset(tblock->size)*sizeof(record);
+        std::memcpy(addr, &tRecord, sizeof(record));
         tblock->size += 19;
         // count the bytes used
         disk::size += 19;
-        return (char *)tblock->records+getOffset(tblock->size)*sizeof(record);
+        return addr;
     } else {
         // No previously reclaimed space, and we cannot insert a new block
         if (disk::freed.empty() && diskFull()) {
@@ -120,18 +121,19 @@ char *disk::insertRecord(std::string tconst, float averageRating, int numVotes) 
             // count the bytes used
             tBlock->size += 19;
             disk::size += 19;
-            return i.second;
+            return (char *)i.second;
         } else {// no previously freed space, and disk can accommodate another block
             // all blocks are full (or disk empty), allocate a new block
             block tBlock = {operator new (disk::blocksize), (int) sizeof(int) };
-            std::memcpy((char *) tBlock.records+getOffset(tBlock.size)*sizeof(record), &tRecord, sizeof(record));
+            char *addr = (char *)tBlock.records+getOffset(tBlock.size)*sizeof(record);
+            std::memcpy(addr, &tRecord, sizeof(record));
             tBlock.size += 19;
 
             // update disk
             disk::blocks.push_back(tBlock);
             disk::size += tBlock.size;
             disk::numBlocks += 1;
-            return (char *)tBlock.records+getOffset(tBlock.size)*sizeof(record);
+            return addr;
         }
     }
 }
