@@ -5,37 +5,47 @@
 #include <vector>
 #include "memory.h"
 
+
+using namespace std;
+
 //Node in B+ Tree
 class Node
 {
-private:
+public:
   // Variables
   void **pointers;                                  //to store Node address or record address
   float *keys;                                      //ptr to arr of key
   int numKeys;                                      //num of key
   bool isLeaf;                                      //true/false
   friend class BPlusTree;                           //access to private var
-
-public:
   Node(int maxKeys); 
 };
 
 class BPlusTree
 {
-private:
+public:
   // Variables
-  disk *disk;           //ptr to memory block
- //disk *index;          //ptr to memory index
+// disk *Disk;           //ptr to memory block
   int maxKeys;          //max num of key
   int degree;           //degree of b+ tree
   int numNodes;         //num of node
   Node *root;           //ptr to main main root
   void *rootAddress;    //ptr to root address
 
-  std::size_t nodeSize; 
+  size_t nodeSize; 
+  vector<Node *> t;
+  // Constructor
+  BPlusTree();
 
   //Methods
 
+  vector<Node *> getT() {
+    return t;
+  }
+
+  void removeT() {
+    t.clear();
+  }
   //void insert(float key, Node *cursorDiskAddress, Node *childDiskAddress);
   void insertInternal(float key, Node *cursorDiskAddress, Node *childDiskAddress);
 
@@ -47,24 +57,24 @@ private:
 
   int checkDuplicate(float key);
 
-public:
-  // Methods
-
-  // Constructor
-  BPlusTree();
-
+std::
   //search
-  //void search(float lowerBoundKey, float upperBoundKey);
+  vector<void *> searchNumVotes(float lowerBoundKey, float upperBoundKey);
+
   Node* search(float x, bool flag, bool print);
 
   //print B+ tree
   void display();
+
+  void displayNode(Node *node);
 
   void insert(void* address,float key);
 
   void remove(float key);
 
   //get and set
+  int getHeight(Node* node);
+  int getHeightData(Node* node);
 
   // Returns a pointer to the root of the B+ Tree.
   Node *getRoot()
@@ -88,6 +98,11 @@ public:
   {
     return maxKeys;
   }
+
+ // int getNumVotes()
+ // {
+ //   return nVotes;
+ // }
 };
 
 #endif

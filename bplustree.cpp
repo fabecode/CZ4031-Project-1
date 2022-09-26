@@ -26,7 +26,7 @@ BPlusTree::BPlusTree()
 {
   // change maxkeys!!!!!!!!!!!!
   maxKeys = 5;
-
+  // maxKeys = 23;
   if (maxKeys == 0)
   {
     throw std::overflow_error("Overflow Error: Too much key & ptr in 1 node");
@@ -424,9 +424,9 @@ Node *BPlusTree::search(float x, bool flag, bool printer)
                 {
                     if (printer == true) {
                         for (int j = 0; j < cursor->numKeys; j++) {
-                            cout << cursor->keys[j] << " ";
+                            std::cout << cursor->keys[j] << " ";
                         }
-                        cout << "\n";
+                        std::cout << "\n";
                     }
                     cursor = (Node*)cursor->pointers[i];
                     break;
@@ -435,9 +435,9 @@ Node *BPlusTree::search(float x, bool flag, bool printer)
                 {
                     if (printer == true) {
                         for (int j = 0; j < cursor->numKeys; j++) {
-                            cout << cursor->keys[j] << " ";
+                            std::cout << cursor->keys[j] << " ";
                         }
-                        cout << "\n";
+                        std::cout << "\n";
                     }
                     cursor = (Node*)cursor->pointers[i+1];
                     break;
@@ -466,46 +466,189 @@ Node *BPlusTree::search(float x, bool flag, bool printer)
     return NULL;
 }
 
+//Testing search for range -wj
+std::vector<void *> BPlusTree::searchNumVotes(float lowerBoundKey, float upperBoundKey)
+{
+    //search logic
+    if(root==NULL)
+    {
+        throw std::logic_error("Tree is empty");
+    }
+    else
+    {
+        Node* cursor = root;
+        //in the following while loop, cursor will travel to the leaf node possibly consisting the key
+        while(cursor->isLeaf == false)
+        {
+          t.push_back(cursor);
+          for(int i = 0; i < cursor->numKeys; i++)
+            {
+                if(isnan(cursor->keys[i]) || lowerBoundKey < cursor->keys[i]) //Keep looping till data hit upper bound and stop
+                {
+                        for (int j = 0; j < cursor->numKeys; j++) {
+                            cout << cursor->keys[j] << " "; 
+                        }
+                        cout << "\n";
+                    
+                    cursor = (Node*)cursor->pointers[i]; 
+                    //Add new feature to push data into vector for comparison against logic later
+                    
+                    break;
+                }
+                if(i == cursor->numKeys - 1)
+                {
+
+                    for (int j = 0; j < cursor->numKeys; j++) {
+                        cout << cursor->keys[j] << " ";
+                    }
+                    cout << "\n";
+                    
+                    cursor = (Node*)cursor->pointers[i+1];
+                    break;
+                }
+            }
+        }
+        
+        //iterate through the data nodes in leaf
+        /*for(int i = 0; i < cursor->numKeys; i++)
+        {
+            if(isnan(cursor->keys[i]) || lowerBoundKey < cursor->keys[i])
+            {
+              if (lowerBoundKey < cursor->keys[i] )
+              {
+                cursor = (Node*)cursor->pointers[i];
+
+                if (cursor->keys[i] >= upperBoundKey){
+                    break;
+                }else {
+                  if (!isnan(cursor->keys[i])){
+                    cout << cursor->keys[i] << " ";
+                  }
+                  
+                }
+              
+              }
+            
+            if(i == cursor->numKeys - 1) //end of entry
+            {
+                for (int j = 0; j < cursor->numKeys; j++) {
+                  if (!isnan(cursor->keys[j])){
+                    cout << cursor->keys[j] << " ";
+                  }
+                }
+                cout << "\n";
+  
+                cursor = (Node*)cursor->pointers[i+1];
+                break;
+            }
+        }
+    } */
+    //end of search loop
+      //cout << "Key not found!" << endl;
+        //in the following for loop, we search for the key if it exists
+        
+        // cursor will be in the correct leaf node - vector is a dynamic array that stores all the addresses
+        
+        std::vector<void *> records;
+        cout << "vector initialized" << endl;
+        int i=0;
+        int x=0;
+        float key = cursor->keys[0];
+        cout << "Am I Leaf? " << cursor->isLeaf << endl;
+        for (int j=0; j< (int)cursor->numKeys; j++) {
+          cout << cursor->keys[j] << " ";
+        }
+        cout << endl;
+        // move cursor to correct lower bound
+        cout << "key:" << key << ",lowerBoundKey: " << lowerBoundKey << ", upperBoundKey:" << upperBoundKey << endl;
+        while (key < lowerBoundKey && i<cursor->numKeys) {
+          key = cursor->keys[i];
+          cout << "key:" << key << " i:" << i << endl;
+          i++;
+        }
+        i -= 1;
+        cout << "Key here: " << cursor->keys[i] << endl;
+        cout << "key:" << key << ",lowerBoundKey: " << lowerBoundKey << ", upperBoundKey:" << upperBoundKey << endl;
+        /*start traversing through all the leaf till we meet upper bound*/
+        
+        /*
+        while (key <= upperBoundKey) {
+          cout << "enter while loop" << endl;
+          cout << "i:" << i << endl;
+          cout << "cursor->numKey: " << cursor->numKeys << endl;
+          for (x=i;x<cursor->numKeys; x++) {
+            cout << "enter for loop" << endl;
+            records.push_back(cursor->pointers[x]);
+            key = cursor->keys[x];
+          }
+          cursor = (Node *)cursor->pointers[maxKeys+1];
+          i = 0;
+        }
+        */
+      for (x=i;x<cursor->numKeys; x++) {
+          cout << "enter for loop" << endl;
+          if (key <= upperBoundKey){
+            records.push_back(cursor->pointers[x]);
+            key = cursor->keys[x];
+          }else {
+            break;
+          }
+        
+            cursor = (Node *)cursor->pointers[cursor->numKeys];
+            i=0; key = cursor->keys[i];
+          while (isnan(cursor->numKeys) && cursor->isLeaf == false) {
+              cursor = (Node *)cursor->pointers[cursor->numKeys+1];
+          }
+           
+        }
+
+      return records;
+    } 
+}
+
 // Display a node and its contents in the B+ Tree.
 void BPlusTree::displayNode(Node *node)
 {
   // Print out all contents in the node as such |pointer|key|pointer|
   int i = 0;
   std::cout << "|";
+
   for (int i = 0; i < node->numKeys; i++)
-  {
-    std::cout << node->pointers[i] << " | ";
-    std::cout << node->keys[i] << " | ";
+    {
+    //   std::cout << node->pointers[i] << " | ";
+    if (!isnan(node->keys[i])){
+      std::cout << node->keys[i] << " | ";
+    }
   }
-
-  // Print last filled pointer
-  if (node->pointers[node->numKeys] == nullptr) {
-    std::cout << " Null |";
-  }
-  else {
-    std::cout << node->pointers[node->numKeys] << "|";
-  }
-
-  for (int i = node->numKeys; i < maxKeys; i++)
-  {
-    std::cout << " x |";      // Remaining empty keys
-    std::cout << "  Null  |"; // Remaining empty pointers
-  }
-
   std::cout << endl;
 }
 
 int BPlusTree::getHeight(Node* node){
-  //  if(node->isLeaf==false){
-  //      return BPlusTree::getHeight(node->pointers[0])+1;
-  //  }
-  //  else if(node->isLeaf==true){
+    if(node->isLeaf==false){
+        return BPlusTree::getHeight((Node *) node->pointers[0])+1;
+    }
+    else if(node->isLeaf==true){
         return 1;
-  //  }
-  //  else{
-  //      return NULL;
-  //  }
+    }
+    else{
+        return 0;
+    }
 }
+
+/*
+int BPlusTree::getHeightData(Node* node){
+    if(node->isLeaf==false){
+        //return BPlusTree::getHeight((Node *) node->pointers[0])+1;
+        return 1;
+    }
+    else if(node->isLeaf==true){
+        return 1;
+    }
+    else{
+        return NULL;
+    }
+}
+*/
 
 void BPlusTree::displayTree(Node *cursor, std::vector<std::string> *s, int *level){
   if(cursor->isLeaf){

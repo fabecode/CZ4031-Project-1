@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <fstream>
 #include <cstring>
 #include "memory.h"
 #include "bplustree.h"
@@ -20,13 +21,50 @@ int main(int argc, char **argv) {
     */
     std::cout << "==================Experiment 1==================" << endl;
     disk *Disk = new disk(150000000, 200); // 150MB
+    BPlusTree bplustree;
+    std::ifstream infile("./datadata.tsv");
+    if (!infile){
+        std::cerr << "File failed to open.\n";
+        exit(1);
+    }
+    std::string str;
+    float avgRate;
+    int nVotes, i=0;
+
+    while (infile.peek() != EOF) {
+        //consume the first line
+        
+        if (i==0) {
+            i += 1;
+            infile >> str >> str >> str;
+            continue;
+        }
+        infile >> str >> avgRate >> nVotes;
+        void *addr = Disk->insertRecord(str, avgRate, nVotes);
+        bplustree.insert((char *)addr, (float) nVotes);
+    }
     //disk *DiskIndex = new disk(350); // 350MB
-    std::vector<block> *diskBlock = Disk->getBlock();
-    Disk->readDataFromFile("./datadata.tsv");
+    //std::vector<block> *diskBlock = Disk->getBlock();
+    //Disk->readDataFromFile("./datadata.tsv");
+
+    // Creation of B+ Tree
+    /*
+    BPlusTree bplustree;
+
+    for (block b: *diskBlock) {
+        int items = (int) (b.size - sizeof(int)) / 19;
+        for (int j=0; j<items; j++) {
+            record R;
+            std::memcpy(&R, (char *) b.records+sizeof(record)*j, sizeof(record));
+            bplustree.insert(((char *)b.records+j*sizeof(record)), (float) R.numVotes);
+        }
+    }*/
 
     // Report statistics
+    //Size of database = size of relational data + index
     Disk->reportStatistics();
-    //Disk->printitems();
+
+    /*//Disk->printitems();
 
     /*
     =============================================================
@@ -39,27 +77,23 @@ int main(int argc, char **argv) {
     =============================================================
     */
     std::cout << "\n==================Experiment 2==================" << endl;
-    BPlusTree bplustree;
-
-    for (block b: *diskBlock) {
-        int items = (int) (b.size - sizeof(int)) / 19;
-        for (int j=0; j<items; j++) {
-            record R;
-            std::memcpy(&R, (char *) b.records+sizeof(record)*j, sizeof(record));
-            bplustree.insert(((char *)b.records+j*sizeof(record)), (float) R.numVotes);
-        }
-    }
+    
 
     std::cout << "Parameter n of the B+ tree    : " << bplustree.getMaxKeys() << endl;
     std::cout << "Number of nodes of the B+ tree: " << bplustree.getNumNodes() << endl; //numnodes to be updated
     std::cout << "Height of the B+ tree         : " << bplustree.getHeight(bplustree.getRoot()) << endl; //height to be updated
-    std::cout << "Root nodes and 1st child node : " << endl;
-
-    cout << "\nRoot Node: " << endl;
+    std::cout << "Root Node: ";
     bplustree.displayNode(bplustree.getRoot()); //getRoot gets the root address
-    cout << bplustree.getRoot() << endl;
-    cout << "\n1st Child Node: " << endl;
-    
+    std::cout << endl;
+    std::cout << "\n1st Child Node: " << endl;
+    bplustree.displayNode((Node *)bplustree.getRoot()->pointers[0]);
+    bplustree.display();
+    //Node *root = bplustree.getRoot();
+    //Node *firstChild = (Node *) root->pointers[0];
+
+    //for (int i=0; i<firstChild->numKeys; i++) {
+    //    cout << firstChild->keys[i] << " ";
+    //}
 
 
     /*
@@ -74,28 +108,70 @@ int main(int argc, char **argv) {
 
     std::cout << "\n==================Experiment 3==================" << endl;
     std::cout << "Retrieve movies with numVotes equal to 500..." << endl;
-    bplustree.search(500, true, false);
+    vector<void *> temp = bplustree.searchNumVotes(651, 653);
+    float avg = 0;
+    cout << "temp size is " << temp.size() << endl;
+    for (auto it : temp) { //iterate through the vector to print the records
+        record R;
+        std::memcpy(&R, (char *) it, sizeof(record));
+        cout << R.tconst << " " << R.averageRating << " " << R.numVotes << endl;
+        avg += R.averageRating;
+    }
 
     std::cout << endl;
-    std::cout << "Number of index nodes the process accesses: " << endl;
+    // number of index nodes accessed is the height of bplus tree - 1
+    std::cout << "Number of index nodes the process accesses: " << bplustree.getHeight(bplustree.getRoot()) - 1 << endl;
     std::cout << "Content of index nodes (first 5 nodes): " << endl;
+    vector<Node *> index = bplustree.getT();    
+    for (int i=0; i<index.size(); i++) {
+        bplustree.displayNode(index[i]);
+        if (i >= 5) {
+            break;
+        }
+    }
+    bplustree.removeT();
     std::cout << "Average of averageRating's of the records returned: " << endl;
+    cout << avg / temp.size() << endl;
 
     /*
     =============================================================
     Experiment 4:
     Retrieve those movies with the attribute “numVotes” from 30,000 to 40,000, both inclusively and report the following statistics:
-        - The number and the content of index nodes the process accesses;
+        - The number and the content of index nodes (first 5) the process accesses;
         - The number and the content of data blocks the process accesses;
         - the average of “averageRating’s” of the records that are returned;
     =============================================================
     */
     std::cout << "\n==================Experiment 4==================" << endl;
-    std::cout << "Number of index nodes the process accesses: " << endl;
+    std::cout << "Retrieve movies with numVotes between 30,000 to 40,000..." << endl;
+    vector<void *> temp2 = bplustree.searchNumVotes(20, 1645);
+    float avg2 = 0;
+    for (auto it : temp2) { //iterate through the vector to print the records
+        record R;
+        std::memcpy(&R, (char *) it, sizeof(record));
+        cout << R.tconst << " " << R.averageRating << " " << R.numVotes << endl;
+        avg2 += R.averageRating;
+    }
+
+    std::cout << "Number of index nodes the process accesses: " << bplustree.getHeight(bplustree.getRoot()) - 1<< endl;
     std::cout << "Content of index nodes the process accesses: " << endl;
+    vector<Node *> index = bplustree.getT();    
+    for (int i=0; i<index.size(); i++) {
+        bplustree.displayNode(index[i]);
+        if (i >= 5) {
+            break;
+        }
+    }
+    cout << avg / temp.size() << endl;    
+    bplustree.removeT();
+    
     std::cout << "Number of data blocks the process accesses: " << endl;
+    cout << avg / temp.size() << endl;
+    
+    
     std::cout << "Content of data blocks the process accesses: " << endl;
     std::cout << "Average of averageRating's of the records that are returned: " << endl;
+
 
 
     /*
@@ -109,5 +185,7 @@ int main(int argc, char **argv) {
     - The root node and its 1st child nodes of the updated B + tree;
     =============================================================
     */
+
+    bplustree.searchNumVotes(1000, 1000);
 
 }

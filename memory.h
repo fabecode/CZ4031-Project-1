@@ -49,7 +49,7 @@ class disk {
         int getNumBlocks();
 
         // insert new record into empty block
-        void insertRecord(std::string tconst, float averageRating, int numVotes);
+        char *insertRecord(std::string tconst, float averageRating, int numVotes);
 
         // deletes a record based on the key
         void deleteRecord(std::string key);
@@ -66,6 +66,10 @@ class disk {
 
         void resetTimesAccessed() {
             disk::timesAccessed = 0;
+        }
+
+        float getSizeMB() {
+            return ((disk::size*1.0) / 1000000);
         }
 };
 

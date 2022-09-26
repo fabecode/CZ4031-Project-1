@@ -87,7 +87,7 @@ void disk::readDataFromFile(std::string filePath) {
 }
 
 // insert a new tuple into disk
-void disk::insertRecord(std::string tconst, float averageRating, int numVotes) {
+char *disk::insertRecord(std::string tconst, float averageRating, int numVotes) {
     record tRecord = record();
     tRecord.averageRating = averageRating;
     tRecord.numVotes = numVotes;
@@ -101,12 +101,12 @@ void disk::insertRecord(std::string tconst, float averageRating, int numVotes) {
         tblock->size += 19;
         // count the bytes used
         disk::size += 19;
-        return;
+        return (char *)tblock->records+getOffset(tblock->size)*sizeof(record);
     } else {
         // No previously reclaimed space, and we cannot insert a new block
         if (disk::freed.empty() && diskFull()) {
             std::cout << "Unable to insert new records, disk has reached max capacity." << std::endl;
-            return;
+            return nullptr;
         }
         // there is a previously freed space, use it
         if (!freed.empty()) {
@@ -120,6 +120,7 @@ void disk::insertRecord(std::string tconst, float averageRating, int numVotes) {
             // count the bytes used
             tBlock->size += 19;
             disk::size += 19;
+            return i.second;
         } else {// no previously freed space, and disk can accommodate another block
             // all blocks are full (or disk empty), allocate a new block
             block tBlock = {operator new (disk::blocksize), (int) sizeof(int) };
@@ -130,6 +131,7 @@ void disk::insertRecord(std::string tconst, float averageRating, int numVotes) {
             disk::blocks.push_back(tBlock);
             disk::size += tBlock.size;
             disk::numBlocks += 1;
+            return (char *)tBlock.records+getOffset(tBlock.size)*sizeof(record);
         }
     }
 }
