@@ -11,6 +11,7 @@ using namespace std;
 int main(int argc, char **argv) {
     // reset buffer
     streambuf *coutbuf = std::cout.rdbuf();
+    
     /*
     =============================================================
     Experiment 1:
@@ -43,26 +44,11 @@ int main(int argc, char **argv) {
         void *addr = Disk->insertRecord(str, avgRate, nVotes);
         bplustree.insert((char *)addr, (float) nVotes);
     }
-    //disk *DiskIndex = new disk(350); // 350MB
-    //std::vector<block> *diskBlock = Disk->getBlock();
-    //Disk->readDataFromFile("./datadata.tsv");
-
-    // Creation of B+ Tree
-    /*
-    BPlusTree bplustree;
-
-    for (block b: *diskBlock) {
-        int items = (int) (b.size - sizeof(int)) / 19;
-        for (int j=0; j<items; j++) {
-            record R;
-            std::memcpy(&R, (char *) b.records+sizeof(record)*j, sizeof(record));
-            bplustree.insert(((char *)b.records+j*sizeof(record)), (float) R.numVotes);
-        }
-    }*/
 
     // Report statistics
     //Size of database = size of relational data + index
     Disk->reportStatistics();
+    bplustree.display();
 
     /*//Disk->printitems();
 
@@ -76,6 +62,7 @@ int main(int argc, char **argv) {
     - The root node and 1st child node (actual content);
     =============================================================
     */
+    
     std::cout << "\n==================Experiment 2==================" << endl;
     
 
@@ -87,7 +74,7 @@ int main(int argc, char **argv) {
     std::cout << endl;
     std::cout << "\n1st Child Node: " << endl;
     bplustree.displayNode((Node *)bplustree.getRoot()->pointers[0]);
-    bplustree.display();
+    //bplustree.display();
     //Node *root = bplustree.getRoot();
     //Node *firstChild = (Node *) root->pointers[0];
 
@@ -105,6 +92,7 @@ int main(int argc, char **argv) {
     - The average of "averageRating's" of the records that are returned;
     =============================================================
     */
+
 
     std::cout << "\n==================Experiment 3==================" << endl;
     std::cout << "Retrieve movies with numVotes equal to 500..." << endl;
@@ -133,6 +121,7 @@ int main(int argc, char **argv) {
     std::cout << "Average of averageRating's of the records returned: " << endl;
     cout << avg / temp.size() << endl;
 
+
     /*
     =============================================================
     Experiment 4:
@@ -142,6 +131,7 @@ int main(int argc, char **argv) {
         - the average of “averageRating’s” of the records that are returned;
     =============================================================
     */
+    
     std::cout << "\n==================Experiment 4==================" << endl;
     std::cout << "Retrieve movies with numVotes between 30,000 to 40,000..." << endl;
     vector<void *> temp2 = bplustree.searchNumVotes(20, 1645);
@@ -172,7 +162,7 @@ int main(int argc, char **argv) {
     std::cout << "Content of data blocks the process accesses: " << endl;
     std::cout << "Average of averageRating's of the records that are returned: " << endl;
 
-
+ 
 
     /*
     =============================================================
@@ -180,12 +170,36 @@ int main(int argc, char **argv) {
     Delete movies with the attribute “numVotes” equal to 1000, update the B + tree accordingly,
     and report the following statistics:
     - The number of times that a node is deleted(or two nodes are merged) during the process of the updating the B + tree;
-    - The number nodes of the updated B + tree;
+    - The number of nodes of the updated B + tree;
     - The height of the updated B + tree;
     - The root node and its 1st child nodes of the updated B + tree;
     =============================================================
     */
 
-    bplustree.searchNumVotes(1000, 1000);
+    std::cout << "\n==================Experiment 5==================" << endl;
+    vector<void *> temp3 = bplustree.searchNumVotes(1000, 1000);
+    for (auto it : temp3) { //iterate through the vector to print the records
+        record R;
+        std::memcpy(&R, (char *) it, sizeof(record));
+        cout << R.tconst << " " << R.averageRating << " " << R.numVotes << endl;
+    }
+    bplustree.display();
+    std::cout << "Delete movies with numVotes equal to 1000..." << endl;
+    bplustree.remove(1000);
+    vector<void *> temp4 = bplustree.searchNumVotes(1000, 1000);
+    for (auto it : temp4) { //iterate through the vector to print the records
+        record R;
+        std::memcpy(&R, (char *) it, sizeof(record));
+        cout << R.tconst << " " << R.averageRating << " " << R.numVotes << endl;
+    }
+    bplustree.display();
+    std::cout << "The number of times that a node is deleted(or two nodes are merged): " << endl;
+    std::cout << "Number of nodes of updated B+ tree: " << bplustree.getNumNodes() << endl; //numnodes to be updated
+    std::cout << "Height of updated B+ tree         : " << bplustree.getHeight(bplustree.getRoot()) << endl; //height to be updated
+    std::cout << "Root Node of updated B+ tree: ";
+    bplustree.displayNode(bplustree.getRoot()); 
+    std::cout << endl;
+    std::cout << "\n1st Child Node of updated B+ tree: " << endl;
+    bplustree.displayNode((Node *)bplustree.getRoot()->pointers[0]);
 
 }

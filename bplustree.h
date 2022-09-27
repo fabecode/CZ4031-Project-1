@@ -25,20 +25,18 @@ class BPlusTree
 {
 public:
   // Variables
-// disk *Disk;           //ptr to memory block
   int maxKeys;          //max num of key
-  int degree;           //degree of b+ tree
   int numNodes;         //num of node
   Node *root;           //ptr to main main root
   void *rootAddress;    //ptr to root address
 
   size_t nodeSize; 
   vector<Node *> t;
+  
   // Constructor
   BPlusTree();
 
   //Methods
-
   vector<Node *> getT() {
     return t;
   }
@@ -61,8 +59,6 @@ std::
   //search
   vector<void *> searchNumVotes(float lowerBoundKey, float upperBoundKey);
 
-  Node* search(float x, bool flag, bool print);
-
   //print B+ tree
   void display();
 
@@ -81,13 +77,6 @@ std::
   {
     return root;
   };
-
-  // Returns num of degree 
-  int getDegree()
-  {
-    return degree;
-  }
-  ;
 
   int getNumNodes()
   {
