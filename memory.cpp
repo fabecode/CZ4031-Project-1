@@ -109,6 +109,7 @@ char *disk::insertRecord(std::string tconst, float averageRating, int numVotes) 
             std::cout << "Unable to insert new records, disk has reached max capacity." << std::endl;
             return nullptr;
         }
+
         // there is a previously freed space, use it
         if (!freed.empty()) {
             // get the first freed pair
@@ -125,6 +126,8 @@ char *disk::insertRecord(std::string tconst, float averageRating, int numVotes) 
         } else {// no previously freed space, and disk can accommodate another block
             // all blocks are full (or disk empty), allocate a new block
             block tBlock = {operator new (disk::blocksize), (int) sizeof(int) };
+            // set all to null
+            memset((char *)tBlock.records, '\0',disk::blocksize);
             char *addr = (char *)tBlock.records+getOffset(tBlock.size)*sizeof(record);
             std::memcpy(addr, &tRecord, sizeof(record));
             tBlock.size += 19;
@@ -147,7 +150,8 @@ void disk::deleteRecord(std::string key) {
     // for each block in disk
     for (int i=0; i<disk::numBlocks; i++) {
         block *currentBlock = &(disk::blocks[i]);
-        int items = (int) (currentBlock->size - sizeof(int)) / 19;
+        // int items = (int) (currentBlock->size - sizeof(int)) / 19;
+        int items = disk::blocksize / 19;
         // for each record in the block
         for (int j=0; j<items; j++) {
             record tRecord;
@@ -195,7 +199,9 @@ void disk::printitems() {
     memset(testBlock, '\0', sizeof(record));
     for (int i=0; i<disk::numBlocks; i++) {
         block b = disk::blocks[i];
-        int items = (int) (b.size - sizeof(int)) / 19;
+        cout << "---New block---" << endl;
+        // int items = (int) (currentBlock->size - sizeof(int)) / 19;
+        int items = disk::blocksize / 19;
         for (int j=0; j<items; j++) {
             record tt;
 
