@@ -558,21 +558,15 @@ void BPlusTree::remove(float key) {
 
         //searching for the correct leaf node
         while (cursor->isLeaf == false) {
-            for (int i = 0; i < cursor->numKeys; i++) {
-                parent = cursor;
-                leftSibling = i - 1;
-                rightSibling = i + 1;
-                if (key < cursor->keys[i]) {
-                    cursor = (Node *) cursor->pointers[i];
-                    break;
-                }
-                if (i == cursor->numKeys - 1) {
-                    leftSibling = i;
-                    rightSibling = i + 2;
-                    cursor = (Node *) cursor->pointers[i + 1];
-                    break;
-                }
+            int i;
+            for (i=0; i < cursor->numKeys; i++){
+                if(key < cursor->keys[i])break;
             }
+            parent = cursor;
+            leftSibling = i - 1;
+            rightSibling = i + 1;
+            cursor = (Node *) cursor->pointers[i];
+
         }
         //searching for the correct key in the particular leaf node
         bool found = false;
@@ -580,7 +574,6 @@ void BPlusTree::remove(float key) {
         for (pos = 0; pos < cursor->numKeys; pos++) {
             if (cursor->keys[pos] == key) {
                 found = true;
-                //check duplicate?
                 break;
             }
         }
@@ -588,41 +581,72 @@ void BPlusTree::remove(float key) {
             cout << "Not found\n";
             return;
         }
+
+        //Found the key, delete overflow nodes
+        OverflowNode *curr = (OverflowNode*) cursor->pointers[pos];
+        free(curr);
+
+        //start shifting keys forward to replace it
         for (int i = pos; i < cursor->numKeys; i++) {
             cursor->keys[i] = cursor->keys[i + 1];
+            cursor->pointers[i] = cursor->pointers[i + 1];
         }
         cursor->numKeys--;
+        cursor->pointers[cursor->numKeys] = cursor->pointers[cursor->numKeys + 1];
+        cursor->pointers[cursor->numKeys + 1] = nullptr;
+
+        //If the key is in internal node, change to the next key
+        int i = 0;
+        while(parent->keys[i] <= key && i < parent->numKeys){
+            if(parent->keys[i] == key)parent->keys[i] = cursor->keys[pos];
+            i++;
+        }
+
         if (cursor == root) {
-            for (int i = 0; i < MAX + 1; i++) {
-                cursor->pointers[i] = NULL;
-            }
+            //What is this for????
+            // for (int i = 0; i < MAX + 1; i++) {
+            //     cursor->pointers[i] = nullptr;
+            // }
             if (cursor->numKeys == 0) {
-                cout << "Tree died\n";
+                cout << "Tree is empty!\n";
                 delete[] cursor->keys;
                 delete[] cursor->pointers;
                 delete cursor;
-                root = NULL;
+                root = nullptr;
             }
             return;
         }
-        cursor->pointers[cursor->numKeys] = cursor->pointers[cursor->numKeys + 1];
-        cursor->pointers[cursor->numKeys + 1] = NULL;
+        
         if (cursor->numKeys >= (MAX + 1) / 2) {
             return;
         }
         if (leftSibling >= 0) {
             Node *leftNode = (Node *) parent->pointers[leftSibling];
+            
+            //Check if able to borrow from left
             if (leftNode->numKeys >= (MAX + 1) / 2 + 1) {
+
+                //Shift the last pointers first
+                cursor->pointers[cursor->numKeys + 1] = cursor->pointers[cursor->numKeys];
+                
+                //Shift both keys and pointers backward
                 for (int i = cursor->numKeys; i > 0; i--) {
                     cursor->keys[i] = cursor->keys[i - 1];
+                    cursor->pointers[i] = cursor->pointers[i - 1];
                 }
+
+                //move the left sibling's last key & ptr to current node
                 cursor->numKeys++;
-                cursor->pointers[cursor->numKeys] = cursor->pointers[cursor->numKeys - 1];
-                cursor->pointers[cursor->numKeys - 1] = NULL;
                 cursor->keys[0] = leftNode->keys[leftNode->numKeys - 1];
+                cursor->pointers[0] = leftNode->pointers[leftNode->numKeys - 1];
+
+                // //set current node's last pointers
+                // cursor->pointers[cursor->numKeys] = cursor->pointers[cursor->numKeys - 1];
+                // cursor->pointers[cursor->numKeys - 1] = NULL;
+                
                 leftNode->numKeys--;
                 leftNode->pointers[leftNode->numKeys] = cursor;
-                leftNode->pointers[leftNode->numKeys + 1] = NULL;
+                leftNode->pointers[leftNode->numKeys + 1] = nullptr;
                 parent->keys[leftSibling] = cursor->keys[0];
                 return;
             }
@@ -632,24 +656,26 @@ void BPlusTree::remove(float key) {
             if (rightNode->numKeys >= (MAX + 1) / 2 + 1) {
                 cursor->numKeys++;
                 cursor->pointers[cursor->numKeys] = cursor->pointers[cursor->numKeys - 1];
-                cursor->pointers[cursor->numKeys - 1] = NULL;
                 cursor->keys[cursor->numKeys - 1] = rightNode->keys[0];
+                cursor->pointers[cursor->numKeys - 1] = rightNode->pointers[0];
                 rightNode->numKeys--;
                 rightNode->pointers[rightNode->numKeys] = rightNode->pointers[rightNode->numKeys + 1];
-                rightNode->pointers[rightNode->numKeys + 1] = NULL;
+                rightNode->pointers[rightNode->numKeys + 1] = nullptr;
                 for (int i = 0; i < rightNode->numKeys; i++) {
                     rightNode->keys[i] = rightNode->keys[i + 1];
+                    rightNode->pointers[i] = rightNode->pointers[i + 1];
                 }
                 parent->keys[rightSibling - 1] = rightNode->keys[0];
                 return;
             }
         }
+        //try merge with left
         if (leftSibling >= 0) {
             Node *leftNode = (Node *) parent->pointers[leftSibling];
             for (int i = leftNode->numKeys, j = 0; j < cursor->numKeys; i++, j++) {
                 leftNode->keys[i] = cursor->keys[j];
+                leftNode->pointers[i] = cursor->pointers[j];
             }
-            leftNode->pointers[leftNode->numKeys] = NULL;
             leftNode->numKeys += cursor->numKeys;
             leftNode->pointers[leftNode->numKeys] = cursor->pointers[cursor->numKeys];
             removeInternal(parent->keys[leftSibling], parent, cursor);
@@ -660,8 +686,8 @@ void BPlusTree::remove(float key) {
             Node *rightNode = (Node *) parent->pointers[rightSibling];
             for (int i = cursor->numKeys, j = 0; j < rightNode->numKeys; i++, j++) {
                 cursor->keys[i] = rightNode->keys[j];
+                cursor->pointers[i] = rightNode->pointers[j];
             }
-            cursor->pointers[cursor->numKeys] = NULL;
             cursor->numKeys += rightNode->numKeys;
             cursor->pointers[cursor->numKeys] = rightNode->pointers[rightNode->numKeys];
             cout << "Merging two leaf nodes\n";
@@ -671,405 +697,11 @@ void BPlusTree::remove(float key) {
             delete rightNode;
         }
     }
-    //Commented out to test linked list deletion
-    /*
-    // set numNodes before deletion
-   //numNodes = index->getNumBlocks();
-   // vector<void *> temp = searchNumVotes(key, key);
-    // Tree is empty.
-    if (root == nullptr)
-    {
-      throw std::logic_error("Tree is empty!");
-    }
-    else
-    {
-
-      Node *cursor = root;
-      Node *parent;                          // Keep track of the parent as we go deeper into the tree in case we need to update it.
-      int leftSibling, rightSibling; // Index of left and right child to borrow from.
-
-      bool findkey = false;
-      while (true){
-
-        parent = cursor;
-
-        for (int i=0; i<cursor->numKeys; i++){
-          // Keep track of left and right to borrow.
-          leftSibling = i - 1;
-          rightSibling = i + 1;
-
-          cout << "i:" << i << " cursor->pointers[i]: " << cursor->pointers[i] << endl;
-          Node* childcursor = (Node*)cursor->pointers[i];
-
-          if(childcursor->isLeaf){
-            for(int j = 0; j < childcursor->numKeys; j++){
-              if(key == childcursor->keys[j]){
-                findkey == true;
-                break;}
-              }
-          }
-          cursor = (Node*)cursor->pointers[i];
-        }
-        cout << "error not found\n";
-        break;
-
-        // if (i == cursor->numKeys - 1)
-        //   {
-        //     leftSibling = i;
-        //     rightSibling = i + 2;
-
-        //     cursor = (Node*)cursor->pointers[i+1];
-        //     break;
-        //   }
-
-        // for(int i = 0; i < cursor->numKeys; i++){
-        // Node* cursor2 = (Node*)cursor->pointers[i];
-        // while(cursor2->isLeaf != true){
-        //   cursor2=cursor2->pointers[]
-        //   for(int i = 0; i < cursor->numKeys;i++){
-        //     if(key == cursor.keys[i])break;
-        //     //else cursor = parent;
-        //   }
-
-        // }
-        // }
-
-
-      //}
-      // While not leaf, keep following the nodes to correct key.
-      while (cursor->isLeaf == false)
-      {
-        // Set the parent of the node (in case we need to assign new child later), and its disk address.
-        parent = cursor;
-
-        // Check through all keys of the node to find key and pointer to follow downwards.
-        for (int i = 0; i < cursor->numKeys; i++)
-        {
-          // Keep track of left and right to borrow.
-          leftSibling = i - 1;
-          rightSibling = i + 1;
-
-          // If key is lesser than current key, go to the left pointer's node.
-          if (isnan(cursor->keys[i]) || key < cursor->keys[i])
-          {
-            cursor = (Node*)cursor->pointers[i];
-            break;
-          }
-          // Else if key larger than all keys in the node, go to last pointer's node (rightmost).
-          if (i == cursor->numKeys - 1)
-          {
-            leftSibling = i;
-            rightSibling = i + 2;
-
-            cursor = (Node*)cursor->pointers[i+1];
-            break;
-          }
-        }
-        //cout << "leftsibli" << leftSibling << " rightsib" << rightSibling << endl;
-
-      }
-
-      // now that we have found the leaf node that might contain the key, we will try and find the position of the key here (if exists)
-      // search if the key to be deleted exists in this bplustree
-      bool found = false;
-      int pos=0;
-      // also works for duplicates
-      Node *temp = cursor;
-      while(true){
-        if(key == temp->keys[pos]){
-          found = true;
-          break;
-        }
-        if(key < temp->keys[pos]){
-          break;
-        }
-        if(pos == temp->numKeys-1){
-          temp = (Node*) temp->pointers[temp->numKeys];
-          pos = 0;
-        }else
-          pos++;
-      }
-
-      // If key to be deleted does not exist in the tree, return error.
-      if (!found)
-      {
-        std::cout << "Can't find specified key " << key << " to delete!" << endl;
-
-        // update numNodes and numNodesDeleted after deletion
-        // int numNodesDeleted = numNodes - index->getNumBlocks();;
-        // numNodes = index->getNumBlocks();;
-        // return numNodesDeleted;
-        return;
-      }
-
-      // pos is the position where we found the key.
-      cursor = temp;
-      //Node *temp2 = temp;
-      int temppos = pos;
-      int keyshiftcount=0;
-      int nodeshiftcount = 0;
-
-      while(true){
-        keyshiftcount++;
-        temppos ++;
-        if(temppos == temp->numKeys || temp->keys[temppos] != key){
-          for (int i = temppos-1; i < temp->numKeys ; i++)
-          {
-            temp->keys[i] = temp->keys[i + keyshiftcount];
-            temp->pointers[i] = temp->pointers[i + keyshiftcount];
-          }
-          temp->numKeys -= keyshiftcount;
-          // Move the last pointer forward (if any).
-          temp->pointers[temp->numKeys] = temp->pointers[temp->numKeys + keyshiftcount];
-
-          for (int i = temp->numKeys + 1 ; i < maxKeys + 1; i++)
-          {
-            temp->pointers[i] = nullptr;
-          }
-          if(temp->keys[temppos] != key){
-            nodeshiftcount++;
-            break;
-          }
-
-          temp = (Node*)temp->pointers[temp->numKeys];
-          temppos = 0;
-          keyshiftcount = 0;
-          //if(temp->keys[temppos]==key)
-          nodeshiftcount++;
-
-        }
-
-      // }
-      // cout << nodeshiftcount << "nodeshiftcnt" << endl;
-      // cout << "leftsibli" << leftSibling << " rightsib" << rightSibling << endl;
-      // If current node is root, check if tree still has keys.
-      if (cursor == root)
-      {
-        if (cursor->numKeys == 0)
-        {
-          // Delete the entire root node and deallocate it.
-          std::cout << "Congratulations! You deleted the entire index!" << endl;
-
-          // Reset root pointers in the B+ Tree.
-          root = nullptr;
-
-        }
-        std::cout << "Successfully deleted " << key << endl;
-        numNodes--;
-
-        // update numNodes and numNodesDeleted after deletion
-        //int numNodesDeleted = numNodes - index->getAllocated();
-
-        //return numNodesDeleted;
-      }
-
-      for(int n = 0; n < nodeshiftcount; n++){
-        // If we didn't delete from root, we check if we have minimum keys ⌊(n+1)/2⌋ for leaf.
-        if (cursor->numKeys >= (maxKeys + 1) / 2)
-        {
-          // No underflow, so we're done.
-          //std::cout << "Successfully deleted " << key << "on node" << endl;
-
-          // update numNodes and numNodesDeleted after deletion
-          // int numNodesDeleted = numNodes - index->getAllocated();
-          // return numNodesDeleted;
-          cursor = (Node*)cursor->pointers[cursor->numKeys];
-          cout << "not underflowwww\n" ;
-          continue;
-        }
-
-
-        // If we reach here, means we have underflow (not enough keys for balanced tree).
-        // Try to take from left sibling (node on same level) first.
-        // Check if left sibling even exists.
-        if (leftSibling >= 0)
-        {
-          // Load in left sibling from disk.
-          Node *leftNode = (Node*)parent->pointers[leftSibling];
-
-          // Check if we can steal (ahem, borrow) a key without underflow.
-          if (leftNode->numKeys >= (maxKeys + 1) / 2 + 1)
-          {
-            // We will insert this borrowed key into the leftmost of current node (smaller).
-
-            // Shift last pointer back by one first.
-            cursor->pointers[cursor->numKeys + 1] = cursor->pointers[cursor->numKeys];
-
-            // Shift all remaining keys and pointers back by one.
-            for (int i = cursor->numKeys; i > 0; i--)
-            {
-              cursor->keys[i] = cursor->keys[i - 1];
-              cursor->pointers[i] = cursor->pointers[i - 1];
-            }
-
-            // Transfer borrowed key and pointer (rightmost of left node) over to current node.
-            cursor->keys[0] = leftNode->keys[leftNode->numKeys - 1];
-            cursor->pointers[0] = leftNode->pointers[leftNode->numKeys - 1];
-            cursor->numKeys++;
-            leftNode->numKeys--;
-
-            // Update left sibling (shift pointers left)
-            leftNode->pointers[cursor->numKeys] = leftNode->pointers[cursor->numKeys + 1];
-
-            // Update parent node's key
-            //!!!check duplicate TT
-            if(search(cursor->keys[0], false, false) == cursor ){
-              parent->keys[leftSibling] = cursor->keys[0];
-            }
-            else{
-              int check = 0;
-              while( search(cursor->keys[check],false,false) != cursor && check < cursor->numKeys){
-                check++;
-              }
-              parent->keys[leftSibling] =  (check == cursor->numKeys)? std::nan(""):cursor->keys[check];
-
-            }
-
-            // update numNodes and numNodesDeleted after deletion
-            // int numNodesDeleted = numNodes - index->getAllocated();
-            // numNodes = index->getAllocated();
-            // return numNodesDeleted;
-            return;
-          }
-        }
-
-        // If we can't take from the left sibling, take from the right.
-        // Check if we even have a right sibling.
-        if (rightSibling <= parent->numKeys)
-        {
-          // If we do, load in right sibling from disk.
-          Node *rightNode = (Node*)parent->pointers[rightSibling];
-
-          // Check if we can steal (ahem, borrow) a key without underflow.
-          if (rightNode->numKeys >= (maxKeys + 1) / 2 + 1)
-          {
-
-            // We will insert this borrowed key into the rightmost of current node (larger).
-            // Shift last pointer back by one first.
-            cursor->pointers[cursor->numKeys + 1] = cursor->pointers[cursor->numKeys];
-
-            // No need to shift remaining pointers and keys since we are inserting on the rightmost.
-            // Transfer borrowed key and pointer (leftmost of right node) over to rightmost of current node.
-            cursor->keys[cursor->numKeys] = rightNode->keys[0];
-            cursor->pointers[cursor->numKeys] = rightNode->pointers[0];
-            cursor->numKeys++;
-            rightNode->numKeys--;
-
-            cout<<rightNode->keys[0]<<"\n";
-
-            // Update right sibling (shift keys and pointers left)
-            for (int i = 0; i < rightNode->numKeys; i++)
-            {
-              rightNode->keys[i] = rightNode->keys[i + 1];
-              rightNode->pointers[i] = rightNode->pointers[i + 1];
-            }
-
-            // Move right sibling's last pointer left by one too.
-            rightNode->pointers[cursor->numKeys] = rightNode->pointers[cursor->numKeys + 1];
-
-            // Update parent node's key to be new lower bound of right sibling.
-            if(search(cursor->keys[0], false, false) == cursor ){\
-              parent->keys[rightSibling - 1] = rightNode->keys[0];
-            }
-            else{
-              int check = 0;
-              while( search(cursor->keys[check],false,false) != cursor && check < cursor->numKeys){
-                check++;
-              }
-              parent->keys[rightSibling - 1] = (check == cursor->numKeys)? std::nan(""):rightNode->keys[0];
-
-            }
-            // update numNodes and numNodesDeleted after deletion
-            // int numNodesDeleted = numNodes - index->getAllocated();
-            // numNodes = index->getAllocated();
-            // return numNodesDeleted;
-            return;
-          }
-        }
-
-        // If we reach here, means no sibling we can steal from.
-        // To resolve underflow, we must merge nodes.
-
-        // If left sibling exists, merge with it.
-        if (leftSibling >= 0)
-        {
-          // Load in left sibling from disk.
-          Node *leftNode = (Node*)parent->pointers[leftSibling];
-
-          // Transfer all keys and pointers from current node to left node.
-          // Note: Merging will always suceed due to ⌊(n)/2⌋ (left) + ⌊(n-1)/2⌋ (current).
-          for (int i = leftNode->numKeys, j = 0; j < cursor->numKeys; i++, j++)
-          {
-            leftNode->keys[i] = cursor->keys[j];
-            leftNode->pointers[i] = cursor->pointers[j];
-          }
-
-          // Update variables, make left node last pointer point to the next leaf node pointed to by current.
-          leftNode->numKeys += cursor->numKeys;
-          leftNode->pointers[leftNode->numKeys] = cursor->pointers[cursor->numKeys];
-
-          // We need to update the parent in order to fully remove the current node.
-          removeInternal(parent->keys[leftSibling], (Node *)parent, (Node *)cursor);
-
-          // Now that we have updated parent, we can just delete the current node from disk.
-          delete[] cursor->keys;
-          delete[] cursor->pointers;
-          //delete cursor;
-        }
-        // If left sibling doesn't exist, try to merge with right sibling.
-        else if (rightSibling <= parent->numKeys)
-        {
-          // Load in right sibling from disk.
-          Node *rightNode = (Node*)parent->pointers[rightSibling];
-
-          // Note we are moving right node's stuff into ours.
-          // Transfer all keys and pointers from right node into current.
-          // Note: Merging will always suceed due to ⌊(n)/2⌋ (left) + ⌊(n-1)/2⌋ (current).
-          for (int i = cursor->numKeys, j = 0; j < rightNode->numKeys; i++, j++)
-          {
-            cursor->keys[i] = rightNode->keys[j];
-            cursor->pointers[i] = rightNode->pointers[j];
-          }
-
-          // Update variables, make current node last pointer point to the next leaf node pointed to by right node.
-          cursor->numKeys += rightNode->numKeys;
-          cursor->pointers[cursor->numKeys] = rightNode->pointers[rightNode->numKeys];
-
-          // if(search(cursor->keys[0], false, false) == cursor ){
-          //     parent->keys[leftSibling] = cursor->keys[0];
-          //   }
-          //   else{
-          //     int check = 0;
-          //     while( search(cursor->keys[check],false,false) != cursor && check < cursor->numKeys){
-          //       check++;
-          //     }
-          //     parent->keys[leftSibling] =  (check == cursor->numKeys)? std::nan(""):cursor->keys[check];
-
-          //   }
-
-          // We need to update the parent in order to fully remove the right node.
-          removeInternal(parent->keys[rightSibling - 1], parent, rightNode);
-
-          // Now that we have updated parent, we can just delete the right node from disk.
-          delete[] rightNode->keys;
-          delete[] rightNode->pointers;
-          //delete cursor;
-        }
-        cursor = (Node*)cursor->pointers[cursor->numKeys];
-      }
-
-      // update numNodes and numNodesDeleted after deletion
-      // int numNodesDeleted = numNodes - index->getAllocated();
-      // numNodes = index->getAllocated();
-      // return numNodesDeleted;
-      return;
-      }
-    }
-  */
+   
 }
 
 
-// Takes in the parent disk address, the child address to delete, and removes the child.
+// Takes in the parent node, the child node to delete, and removes the child.
 void BPlusTree::removeInternal(float key, Node *cursor, Node *child) {
     // If current parent is root
     if (cursor == root) {
@@ -1083,14 +715,12 @@ void BPlusTree::removeInternal(float key, Node *cursor, Node *child) {
                 delete child;
 
                 // Set new root to be the parent's left pointer
-                // Load left pointer into main memory and update root.
                 root = (Node *) cursor->pointers[0];
 
                 delete[] cursor->keys;
                 delete[] cursor->pointers;
                 delete cursor;
 
-                // Nothing to save to disk. All updates happened in main memory.
                 std::cout << "Root node changed." << endl;
                 return;
             }
@@ -1103,14 +733,12 @@ void BPlusTree::removeInternal(float key, Node *cursor, Node *child) {
 
 
                 // Set new root to be the parent's right pointer
-                // Load right pointer into main memory and update root.
                 root = (Node *) cursor->pointers[1];
 
                 delete[] cursor->keys;
                 delete[] cursor->pointers;
                 delete cursor;
 
-                // Nothing to save to disk. All updates happened in main memory.
                 std::cout << "Root node changed." << endl;
                 return;
             }
@@ -1124,7 +752,7 @@ void BPlusTree::removeInternal(float key, Node *cursor, Node *child) {
 
     // Search for key to delete in parent based on child's lower bound key.
     for (pos = 0; pos < cursor->numKeys; pos++) {
-        if (cursor->keys[pos] == key || (isnan(cursor->keys[pos]) && isnan(key))) {
+        if (cursor->keys[pos] == key) {
             break;
         }
     }
@@ -1211,7 +839,8 @@ void BPlusTree::removeInternal(float key, Node *cursor, Node *child) {
             leftNode->numKeys--;
 
             // Update left sibling (shift pointers left)
-            leftNode->pointers[cursor->numKeys] = leftNode->pointers[cursor->numKeys + 1];
+            //what is this forrrr???
+            //leftNode->pointers[cursor->numKeys] = leftNode->pointers[cursor->numKeys + 1];
 
             return;
         }
@@ -1319,7 +948,7 @@ int BPlusTree::checkDuplicate(float key) {
 
 }
 // int main() {
-//   BPlusTree node;
+//   BPlusTree node(200);
 //   char a = 't';
 
 //  node.insert(&a,12);
@@ -1328,9 +957,16 @@ int BPlusTree::checkDuplicate(float key) {
 //  node.insert(&a,10);
 //  node.insert(&a,9);
 //  node.insert(&a,8);
-// node.insert(&a,7);
+//  node.insert(&a,7);
 //  node.insert(&a,6);
-// //  node.remove(10);
+//   node.remove(10);
+//   node.insert(&a,13);
+//   node.insert(&a,5);
+//   node.insert(&a,10);
+//   node.remove(8);
+//   node.remove(9);
+//   node.remove(7);
+//   node.remove(11);
 
 //   node.display();
 // }
