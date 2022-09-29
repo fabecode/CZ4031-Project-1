@@ -142,8 +142,6 @@ void BPlusTree::insert(void *address, float key) {
                 Node *next = (Node *)cursor->pointers[maxKeys];
                 cursor->pointers[maxKeys] = tNode;
 
-                cout << next << "next \n";
-
                 // create a temp vector to hold the maxKeys + 1 items
                 std::vector<pair<float, void*>> tpointers;
                 // push the new item in
@@ -506,7 +504,6 @@ int BPlusTree::getHeightData(Node* node){
 
 void BPlusTree::displayTree(Node *cursor, std::vector<std::string> *s, int *level) {
     if (cursor->isLeaf) {
-        cout << "Enter leaf\n";
         string item;
         item.append("|");
         for (int i = 0; i < cursor->numKeys; i++) {
