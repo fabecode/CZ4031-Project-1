@@ -132,13 +132,18 @@ void BPlusTree::insert(void *address, float key) {
                 cursor->pointers[i] = newNode;
                 cursor->keys[i] = key;
                 cursor->numKeys += 1;
-            } else { // no space, we need to split the node
+            } else { 
+                // no space, we need to split the node
                 // update numNodes
                 BPlusTree::numNodes += 1;
                 Node *tNode = new Node(maxKeys);
                 tNode->isLeaf = true;
-                tNode->pointers[maxKeys] = cursor->pointers[maxKeys];
+
+                Node *next = (Node *)cursor->pointers[maxKeys];
                 cursor->pointers[maxKeys] = tNode;
+
+                cout << next << "next \n";
+
                 // create a temp vector to hold the maxKeys + 1 items
                 std::vector<pair<float, void*>> tpointers;
                 // push the new item in
@@ -172,11 +177,10 @@ void BPlusTree::insert(void *address, float key) {
                 // If we are at root (aka root == leaf), then we need to make a new parent root.
                 int check = 0;
                 float internalKey = tNode->keys[0];
-                // not sure if we need this
-                //while (search(tNode->keys[check], false, false) != NULL && check < tNode->numKeys) {
-                //    check++;
-                //}
-                //internalKey = (check == tNode->numKeys) ? std::nan("") : tNode->keys[check];
+
+                cursor->pointers[maxKeys] = tNode;
+                tNode->pointers[maxKeys] = next;
+
 
                 if (cursor == root) {
                     // created new root, update numNodes
@@ -415,30 +419,46 @@ std::vector<void *> BPlusTree::searchNumVotes(float lowerBoundKey, float upperBo
         }
         cout << endl;
         // move cursor to correct lower bound
-        while (key < lowerBoundKey && i < cursor->numKeys) {
+        for( i = 0; i < cursor->numKeys; i++){
             key = cursor->keys[i];
-            // cout << "key:" << key << " i:" << i << endl;
-            i++;
+            if(key >= lowerBoundKey) break;
         }
-        i -= 1;
+        // or the key that >= lowerbound might be at the next node
+        if( i == cursor->numKeys ){
+            cout << cursor->numKeys << endl;
+            cursor = (Node *) cursor->pointers[maxKeys];
+            
+            if(!cursor)return records;
+            if( cursor->keys[0] >= lowerBoundKey )i = 0;
+            else{
+                // not record within the range
+                return records;
+            }
+        }
         cout << "Key here: " << cursor->keys[i] << endl;
         cout << "key:" << key << ",lowerBoundKey: " << lowerBoundKey << ", upperBoundKey:" << upperBoundKey << endl;
 
         /*start traversing through all the leaf till we meet upper bound*/
-        for (x = i; x < cursor->numKeys; x++) {
-            if (key <= upperBoundKey) {
-                records.push_back(cursor->pointers[x]);
-                key = cursor->keys[x];
-            } else {
-                break;
+        x=i;
+        while( cursor->keys[x]<=upperBoundKey){
+            //Handle overflownode contents
+            OverflowNode *ofnode = (OverflowNode *)cursor->pointers[x];
+            for(int j = 0; j < ofnode->numKeys ; j++){
+                records.push_back(ofnode->pointers[j]);
             }
 
-            cursor = (Node *) cursor->pointers[cursor->numKeys];
-            i = 0;
-            key = cursor->keys[i];
-            while (isnan(cursor->numKeys) && cursor->isLeaf == false) {
-                cursor = (Node *) cursor->pointers[cursor->numKeys + 1];
+            //key = cursor->keys[x];
+            x++;
+            
+            if(x == cursor->numKeys){
+                //for(int y =0; y < maxKeys; y ++ )
+                if(cursor->pointers[maxKeys]){
+                    cursor = (Node *) cursor->pointers[maxKeys];
+                    x = 0;
+                }
+                else break;
             }
+
         }
         return records;
     }
@@ -640,7 +660,7 @@ void BPlusTree::remove(float key) {
                 cursor->keys[0] = leftNode->keys[leftNode->numKeys - 1];
                 cursor->pointers[0] = leftNode->pointers[leftNode->numKeys - 1];
 
-                // //set current node's last pointers
+                // set current node's last pointers
                 // cursor->pointers[cursor->numKeys] = cursor->pointers[cursor->numKeys - 1];
                 // cursor->pointers[cursor->numKeys - 1] = NULL;
                 
@@ -677,7 +697,7 @@ void BPlusTree::remove(float key) {
                 leftNode->pointers[i] = cursor->pointers[j];
             }
             leftNode->numKeys += cursor->numKeys;
-            leftNode->pointers[leftNode->numKeys] = cursor->pointers[cursor->numKeys];
+            leftNode->pointers[maxKeys] = cursor->pointers[maxKeys];
             removeInternal(parent->keys[leftSibling], parent, cursor);
             delete[] cursor->keys;
             delete[] cursor->pointers;
@@ -689,7 +709,7 @@ void BPlusTree::remove(float key) {
                 cursor->pointers[i] = rightNode->pointers[j];
             }
             cursor->numKeys += rightNode->numKeys;
-            cursor->pointers[cursor->numKeys] = rightNode->pointers[rightNode->numKeys];
+            cursor->pointers[maxKeys] = rightNode->pointers[maxKeys];
             cout << "Merging two leaf nodes\n";
             removeInternal(parent->keys[rightSibling - 1], parent, rightNode);
             delete[] rightNode->keys;
@@ -959,14 +979,16 @@ int BPlusTree::checkDuplicate(float key) {
 //  node.insert(&a,8);
 //  node.insert(&a,7);
 //  node.insert(&a,6);
-//   node.remove(10);
+// //   node.remove(10);
 //   node.insert(&a,13);
 //   node.insert(&a,5);
-//   node.insert(&a,10);
-//   node.remove(8);
-//   node.remove(9);
-//   node.remove(7);
-//   node.remove(11);
+//   node.insert(&a,16);
+//   node.insert(&a,17);
+//   node.insert(&a,4);
+// //   node.remove(8);
+// //   node.remove(9);
+// //   node.remove(7);
+// //   node.remove(11);
 
 //   node.display();
 // }
