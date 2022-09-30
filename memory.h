@@ -3,49 +3,73 @@
 
 #include <vector>
 #include <string>
-#include <unordered_map>
-#include <tuple>
-#include <cstdint>
 
 struct record {
-    char tconst[10];
+    char tconst[11];
     float averageRating;
     int numVotes;
 };
 
 struct block {
-    std::vector<record> records;
-    uint16_t size;
+    void *records;
+    int size;
+};
+
+// get records based on block index + offset from *records
+struct blockAddress {
+    int index;
+    int offset;
 };
 
 class disk {
-private:
-    std::vector<block> blocks;
-    int size;
-    int blocksize;
-    int numBlocks;
-public:
-    disk(int blocksize);
+    private:
+        std::vector<block *> blocks;
+        std::vector<std::pair<int, char*>> freed;
+        int size;
+        int blocksize;
+        int numBlocks;
+        int capacity;
+        int timesAccessed;
+    public:
+        disk(int capacity, int blocksize);
 
-    ~disk();
+        ~disk();
 
-    // prints all records in the database
-    void printitems();
+        // prints all records in the database - remove later
+        void printitems();
 
-    // create disk by reading from file
-    void readDataFromFile(std::string filePath);
+        // simulates a block access
+        block *getBlock(int index);
 
-    // returns a reference to the disk, used to build the bp tree
-    std::vector<block> *getBlock();
+        // output the number of blocks used and the size of the database
+        void reportStatistics();
 
-    // output the number of blocks used and the size of the database
-    void reportStatistics();
+        // return number of blocks 
+        int getNumBlocks();
 
-    // insert new record into empty block
-    void insertRecords(std::string tconst, float averageRating, int numVotes);
+        // insert new record into empty block
+        blockAddress *insertRecord(std::string tconst, float averageRating, int numVotes);
 
-    // deletes a record based on the key
-    void deleteRecord(std::string key);
+        // deletes a record based on the key
+        void deleteRecord(std::string key);
+
+        bool diskFull();
+
+        int getTimesAccessed() {
+            return disk::timesAccessed;
+        }
+
+        void increaseTimesAccessed() {
+            disk::timesAccessed += 1;
+        }
+
+        void resetTimesAccessed() {
+            disk::timesAccessed = 0;
+        }
+
+        float getSizeMB() {
+            return ((disk::size*1.0) / 1000000);
+        }
 };
 
 #endif
