@@ -5,8 +5,6 @@
 #include <cstring>
 #include "memory.h"
 #include "bplustree.h"
-#include "memory.cpp"
-#include "bplustree.cpp"
 
 using namespace std;
 
@@ -42,14 +40,15 @@ int main(int argc, char **argv) {
             infile >> str >> str >> str;
             continue;
         }
+
         infile >> str >> avgRate >> nVotes;
-        blockAddress *addr = Disk->insertRecord(str, avgRate, nVotes);
+        char *addr = Disk->insertRecord(str, avgRate, nVotes);
         bplustree->insert(addr, nVotes);
     }
-
+    //exit(0);
     // Report statistics
     //Size of database = size of relational data + index
-    Disk->reportStatistics();
+    //Disk->reportStatistics();
     //bplustree->display();
 
     /*
@@ -183,20 +182,20 @@ double calculateAverage(disk *Disk, vector<void *> &items, int overflowSize) {
         record *r = (record *)items[i];
         avg += r->averageRating;
         count += 1;
-        // OverflowNode *overflow = (OverflowNode *)items[i];
-        // while (overflow != nullptr) {
-        //     for (int j=0; j<overflow->numKeys; j++) {
-        //         blockAddress *bAddr = (blockAddress *) overflow->pointers[j];
-        //         block *dBlock = Disk->getBlock(bAddr->index);
-
-        //         record R;
-        //         std::memcpy(&R, (char *) dBlock->records+bAddr->offset, sizeof(record));
-        //         //cout << R.tconst << " " << R.averageRating << " " << R.numVotes << endl;
-        //         avg += R.averageRating;
-        //         count += 1;
-        //     }
-        //     overflow = (OverflowNode *) overflow->pointers[overflowSize - 1];
-        // }
+//         OverflowNode *overflow = (OverflowNode *)items[i];
+//         while (overflow != nullptr) {
+//             for (int j=0; j<overflow->numKeys; j++) {
+//                 blockAddress *bAddr = (blockAddress *) overflow->pointers[j];
+//                 block *dBlock = Disk->getBlock(bAddr->index);
+//
+//                 record R;
+//                 std::memcpy(&R, (char *) dBlock->records+bAddr->offset, sizeof(record));
+//                 //cout << R.tconst << " " << R.averageRating << " " << R.numVotes << endl;
+//                 avg += R.averageRating;
+//                 count += 1;
+//             }
+//             overflow = (OverflowNode *) overflow->pointers[overflowSize - 1];
+//         }
 //        for (int j=0; j<overflow->numKeys; j++) {
 //            if (j == overflow->numKeys - 1) {
 //                overflow = (OverflowNode *) overflow->pointers[overflowSize - 1];

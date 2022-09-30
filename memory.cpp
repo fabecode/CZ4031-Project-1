@@ -6,8 +6,6 @@
 
 using namespace std;
 
-int t = 0;
-
 int getOffset(int size) {
     return (int) (size - sizeof(int)) / 19;
 }
@@ -27,7 +25,7 @@ disk::~disk() {
 }
 
 // insert a new tuple into disk
-blockAddress *disk::insertRecord(std::string tconst, float averageRating, int numVotes) {
+char *disk::insertRecord(std::string tconst, float averageRating, int numVotes) {
     record tRecord = record();
     tRecord.averageRating = averageRating;
     tRecord.numVotes = numVotes;
@@ -48,23 +46,23 @@ blockAddress *disk::insertRecord(std::string tconst, float averageRating, int nu
         tBlock->size += 19;
         disk::size += 19;
         blockAddress *bAddr = new blockAddress{i.first, offset};
-        return bAddr;
+        return (char *)i.second;
     }
 
     // try inserting to the last block if there is space in the block and on the disk
     if (!disk::blocks.empty() && disk::blocks.back()->size + 19 < disk::blocksize) {
         block *tblock = disk::blocks.back();
         int offset = getOffset(tblock->size)*sizeof(record);
-        int index = disk::numBlocks - 1;
-        blockAddress *bAddr = new blockAddress();
-        bAddr->offset = offset;
-        bAddr->index = index;
+        //int index = disk::numBlocks - 1;
+        //blockAddress *bAddr = new blockAddress();
+        //bAddr->offset = offset;
+        //bAddr->index = index;
         char *addr = (char *)tblock->records+offset;
         std::memcpy(addr, &tRecord, sizeof(record));
         tblock->size += 19;
         // count the bytes used
         disk::size += 19;
-        return bAddr;
+        return addr;
     } else {
         // No previously reclaimed space, and we cannot insert a new block
         if (disk::freed.empty() && diskFull()) {
@@ -80,10 +78,10 @@ blockAddress *disk::insertRecord(std::string tconst, float averageRating, int nu
         // set all to null
         memset((char *)tBlock->records, '\0',disk::blocksize);
         int offset = getOffset(tBlock->size)*sizeof(record);
-        int index = disk::numBlocks;
-        blockAddress *bAddr = new blockAddress();
-        bAddr->offset = offset;
-        bAddr->index = index;
+        //int index = disk::numBlocks;
+        //blockAddress *bAddr = new blockAddress();
+        //bAddr->offset = offset;
+        //bAddr->index = index;
         char *addr = (char *)tBlock->records+offset;
         std::memcpy(addr, &tRecord, sizeof(record));
         tBlock->size += 19;
@@ -92,7 +90,7 @@ blockAddress *disk::insertRecord(std::string tconst, float averageRating, int nu
         disk::blocks.push_back(tBlock);
         disk::size += tBlock->size;
         disk::numBlocks += 1;
-        return bAddr;
+        return addr;
     }
 }
 

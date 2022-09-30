@@ -48,7 +48,7 @@ class disk {
         int getNumBlocks();
 
         // insert new record into empty block
-        blockAddress *insertRecord(std::string tconst, float averageRating, int numVotes);
+        char *insertRecord(std::string tconst, float averageRating, int numVotes);
 
         // deletes a record based on the key
         void deleteRecord(std::string key);
