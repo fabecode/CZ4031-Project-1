@@ -5,6 +5,8 @@
 #include <cstring>
 #include "memory.h"
 #include "bplustree.h"
+#include "memory.cpp"
+#include "bplustree.cpp"
 
 using namespace std;
 
@@ -178,20 +180,23 @@ double calculateAverage(disk *Disk, vector<void *> &items, int overflowSize) {
     float avg = 0;
     int count = 0;
     for (int i=0; i<items.size(); i++) { //iterate through the vector to print the records
-        OverflowNode *overflow = (OverflowNode *)items[i];
-        while (overflow != nullptr) {
-            for (int j=0; j<overflow->numKeys; j++) {
-                blockAddress *bAddr = (blockAddress *) overflow->pointers[j];
-                block *dBlock = Disk->getBlock(bAddr->index);
+        record *r = (record *)items[i];
+        avg += r->averageRating;
+        count += 1;
+        // OverflowNode *overflow = (OverflowNode *)items[i];
+        // while (overflow != nullptr) {
+        //     for (int j=0; j<overflow->numKeys; j++) {
+        //         blockAddress *bAddr = (blockAddress *) overflow->pointers[j];
+        //         block *dBlock = Disk->getBlock(bAddr->index);
 
-                record R;
-                std::memcpy(&R, (char *) dBlock->records+bAddr->offset, sizeof(record));
-                //cout << R.tconst << " " << R.averageRating << " " << R.numVotes << endl;
-                avg += R.averageRating;
-                count += 1;
-            }
-            overflow = (OverflowNode *) overflow->pointers[overflowSize - 1];
-        }
+        //         record R;
+        //         std::memcpy(&R, (char *) dBlock->records+bAddr->offset, sizeof(record));
+        //         //cout << R.tconst << " " << R.averageRating << " " << R.numVotes << endl;
+        //         avg += R.averageRating;
+        //         count += 1;
+        //     }
+        //     overflow = (OverflowNode *) overflow->pointers[overflowSize - 1];
+        // }
 //        for (int j=0; j<overflow->numKeys; j++) {
 //            if (j == overflow->numKeys - 1) {
 //                overflow = (OverflowNode *) overflow->pointers[overflowSize - 1];
