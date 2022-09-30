@@ -13,10 +13,9 @@ class Node {
     public:
         // Variables
         void **pointers;                                  //to store Node address or record address
-        float *keys;                                      //ptr to arr of key
+        int *keys;                                      //ptr to arr of key
         int numKeys;                                      //num of key
         bool isLeaf;                                      //true/false
-        //friend class BPlusTree;                           //access to private var
         Node(int maxKeys);
 };
 
@@ -25,7 +24,6 @@ class OverflowNode {
         void **pointers;                                  //to store Node address or record address
         int numKeys;                                      //num of key
         bool isLeaf;                                      //true/false
-        //friend class BPlusTree;                           //access to private var
         OverflowNode(int maxKeys);
 };
 
@@ -37,7 +35,7 @@ class BPlusTree {
         Node *root;           //ptr to main main root
         //void *rootAddress;    //ptr to root address
 
-        size_t nodeSize;
+        int overflowSize;
         vector<Node *> t;
 
         // Constructor
@@ -53,27 +51,27 @@ class BPlusTree {
         }
 
         //void insert(float key, Node *cursorDiskAddress, Node *childDiskAddress);
-        void insertInternal(float key, Node *cursorDiskAddress, Node *childDiskAddress);
+        void insertInternal(int key, Node *cursorDiskAddress, Node *childDiskAddress);
 
         void displayTree(Node *cursor, std::vector<std::string> *s, int *level);
 
-        void removeInternal(float key, Node *cursorDiskAddress, Node *childDiskAddress);
+        void removeInternal(int key, Node *cursorDiskAddress, Node *childDiskAddress);
 
         Node *findParent(Node *, Node *);
 
-        int checkDuplicate(float key);
+        int checkDuplicate(int key);
 
         //search
-        std::vector<void *> searchNumVotes(float lowerBoundKey, float upperBoundKey);
+        std::vector<void *> searchNumVotes(int lowerBoundKey, int upperBoundKey);
 
         //print B+ tree
         void display();
 
         void displayNode(Node *node);
 
-        void insert(void *address, float key);
+        void insert(void *address, int key);
 
-        void remove(float key);
+        void remove(int key);
 
         //get and set
         int getHeight(Node *node);

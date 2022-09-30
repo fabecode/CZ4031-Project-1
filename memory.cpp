@@ -1,11 +1,12 @@
 #include "memory.h"
 #include <iostream>
-#include <fstream>
 #include <string>
 #include <algorithm>
 #include <cstring>
 
 using namespace std;
+
+int t = 0;
 
 int getOffset(int size) {
     return (int) (size - sizeof(int)) / 19;
@@ -20,89 +21,50 @@ disk::disk(int capacity, int bsize) {
 }
 
 disk::~disk() {
-
-}
-
-// reads all data from file and add to the disk
-void disk::readDataFromFile(std::string filePath) {
-    std::ifstream infile(filePath);
-    if (!infile){
-        std::cerr << "File failed to open.\n";
-        exit(1);
-    }
-
-    // initialise a new block (either 200 or 500), use 4 bytes for an integer header
-    block tblock = {operator new (disk::blocksize), (int) sizeof(int) };
-    std::string str;
-    float avgRate;
-    int nVotes, i=0;
-
-    // reads all records from file
-    while (infile.peek() != EOF) {
-        //consume the first line
-        if (i==0) {
-            i += 1;
-            infile >> str >> str >> str;
-            continue;
-        }
-        infile >> str >> avgRate >> nVotes;
-        record tRecord = record();
-        tRecord.averageRating = avgRate;
-        tRecord.numVotes = nVotes;
-        str.copy(tRecord.tconst, str.length(), 0);
-        tRecord.tconst[str.length()] = '\0';
-
-        // if there is space for a new record
-        if (tblock.size + 19 < disk::blocksize) {
-            std::memcpy((char *) tblock.records+ getOffset(tblock.size)*sizeof(record), &tRecord, sizeof(record));
-            tblock.size += 19;
-        } else {
-            // block is full, add it to disk
-            disk::blocks.push_back(tblock);
-            disk::numBlocks += 1;
-            // only track used bytes
-            disk::size += tblock.size;
-
-            // we reached the max capacity and cannot allocate a new block
-            if (diskFull()) {
-                std::cout << "Unable to insert more records, disk is full." << std::endl;
-                return;
-            }
-
-            // disk has space for a new block, add the record to the block
-            tblock = {operator new (disk::blocksize), sizeof(int) };
-            std::memcpy((char *) tblock.records+getOffset(tblock.size)*sizeof(record), &tRecord, sizeof(record));
-            tblock.size += 19;
-        }
-    }
-
-    // add the last block into the disk if disk is not full and there are records in the last block, and
-    // adding the last block does not exceed the size
-    if (tblock.size > sizeof(int) && !diskFull()) {
-        disk::blocks.push_back(tblock);
-        disk::numBlocks += 1;
-        // only track used bytes
-        disk::size += tblock.size;
+    for (int i=0; i<disk::numBlocks; i++) {
+        delete disk::blocks[i];
     }
 }
 
 // insert a new tuple into disk
-char *disk::insertRecord(std::string tconst, float averageRating, int numVotes) {
+blockAddress *disk::insertRecord(std::string tconst, float averageRating, int numVotes) {
     record tRecord = record();
     tRecord.averageRating = averageRating;
     tRecord.numVotes = numVotes;
     tconst.copy(tRecord.tconst, tconst.length(), 0);
     tRecord.tconst[tconst.length()] = '\0';
 
+    // there is a previously freed space, use it
+    if (!freed.empty()) {
+        // get the first freed pair
+        std::pair<int, void *> i = freed[0];
+        freed.erase(freed.begin());
+        // retrieve the block (simulate block access)
+        block *tBlock = disk::blocks[i.first];
+        int offset = getOffset(tBlock->size)*sizeof(record);
+        // add the record into the address pointed by the second item in the pair
+        std::memcpy((char *) i.second, &tRecord, sizeof(record));
+        // count the bytes used
+        tBlock->size += 19;
+        disk::size += 19;
+        blockAddress *bAddr = new blockAddress{i.first, offset};
+        return bAddr;
+    }
+
     // try inserting to the last block if there is space in the block and on the disk
-    if (!disk::blocks.empty() && disk::blocks.back().size + 19 < disk::blocksize) {
-        block *tblock = &(disk::blocks.back());
-        char *addr = (char *)tblock->records+getOffset(tblock->size)*sizeof(record);
+    if (!disk::blocks.empty() && disk::blocks.back()->size + 19 < disk::blocksize) {
+        block *tblock = disk::blocks.back();
+        int offset = getOffset(tblock->size)*sizeof(record);
+        int index = disk::numBlocks - 1;
+        blockAddress *bAddr = new blockAddress();
+        bAddr->offset = offset;
+        bAddr->index = index;
+        char *addr = (char *)tblock->records+offset;
         std::memcpy(addr, &tRecord, sizeof(record));
         tblock->size += 19;
         // count the bytes used
         disk::size += 19;
-        return addr;
+        return bAddr;
     } else {
         // No previously reclaimed space, and we cannot insert a new block
         if (disk::freed.empty() && diskFull()) {
@@ -110,34 +72,27 @@ char *disk::insertRecord(std::string tconst, float averageRating, int numVotes) 
             return nullptr;
         }
 
-        // there is a previously freed space, use it
-        if (!freed.empty()) {
-            // get the first freed pair
-            std::pair<int, void *> i = freed[0];
-            freed.erase(freed.begin());
-            // retrieve the block (simulate block access)
-            block *tBlock = &(disk::blocks[i.first]);
-            // add the record into the address pointed by the second item in the pair
-            std::memcpy((char *) i.second, &tRecord, sizeof(record));
-            // count the bytes used
-            tBlock->size += 19;
-            disk::size += 19;
-            return (char *)i.second;
-        } else {// no previously freed space, and disk can accommodate another block
-            // all blocks are full (or disk empty), allocate a new block
-            block tBlock = {operator new (disk::blocksize), (int) sizeof(int) };
-            // set all to null
-            memset((char *)tBlock.records, '\0',disk::blocksize);
-            char *addr = (char *)tBlock.records+getOffset(tBlock.size)*sizeof(record);
-            std::memcpy(addr, &tRecord, sizeof(record));
-            tBlock.size += 19;
+        // no previously freed space, and disk can accommodate another block
+        // all blocks are full (or disk empty), allocate a new block
+        block *tBlock = new block();
+        tBlock->records = operator new(disk::blocksize);
+        tBlock->size = (int) sizeof(int);
+        // set all to null
+        memset((char *)tBlock->records, '\0',disk::blocksize);
+        int offset = getOffset(tBlock->size)*sizeof(record);
+        int index = disk::numBlocks;
+        blockAddress *bAddr = new blockAddress();
+        bAddr->offset = offset;
+        bAddr->index = index;
+        char *addr = (char *)tBlock->records+offset;
+        std::memcpy(addr, &tRecord, sizeof(record));
+        tBlock->size += 19;
 
-            // update disk
-            disk::blocks.push_back(tBlock);
-            disk::size += tBlock.size;
-            disk::numBlocks += 1;
-            return addr;
-        }
+        // update disk
+        disk::blocks.push_back(tBlock);
+        disk::size += tBlock->size;
+        disk::numBlocks += 1;
+        return bAddr;
     }
 }
 
@@ -149,7 +104,7 @@ void disk::deleteRecord(std::string key) {
 
     // for each block in disk
     for (int i=0; i<disk::numBlocks; i++) {
-        block *currentBlock = &(disk::blocks[i]);
+        block *currentBlock = disk::blocks[i];
         // int items = (int) (currentBlock->size - sizeof(int)) / 19;
         int items = disk::blocksize / 19;
         // for each record in the block
@@ -188,8 +143,6 @@ void disk::deleteRecord(std::string key) {
         disk::blocks.erase(disk::blocks.begin() + index);
         // update disk
         disk::numBlocks -= 1;
-        // no longer need to track this
-        // disk::size -= disk::blocksize;
     }
 }
 
@@ -198,14 +151,13 @@ void disk::printitems() {
     char testBlock[sizeof(record)];
     memset(testBlock, '\0', sizeof(record));
     for (int i=0; i<disk::numBlocks; i++) {
-        block b = disk::blocks[i];
+        block *b = disk::blocks[i];
         cout << "---New block---" << endl;
-        // int items = (int) (currentBlock->size - sizeof(int)) / 19;
         int items = disk::blocksize / 19;
         for (int j=0; j<items; j++) {
             record tt;
 
-            std::memcpy(&tt, (char *) b.records+sizeof(record)*j, sizeof(record));
+            std::memcpy(&tt, (char *) b->records+sizeof(record)*j, sizeof(record));
             if (memcmp(&tt, testBlock, sizeof(record)) != 0){
                 cout << tt.tconst << " " << tt.averageRating << " " << tt.numVotes << endl;
             }
@@ -213,12 +165,7 @@ void disk::printitems() {
     }
 }
 
-// returns a reference to the disk, used to build the bp tree
-std::vector<block> *disk::getBlock() {
-    return (&(disk::blocks));
-}
-
-block disk::getBlock(int index) {
+block *disk::getBlock(int index) {
     // everytime we retrieve a block, increment the access time
     disk::increaseTimesAccessed();
     return (disk::blocks[index]);
