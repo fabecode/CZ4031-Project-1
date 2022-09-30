@@ -51,19 +51,15 @@ BPlusTree::BPlusTree(int blocksize) {
 
 // Insert a record into the B+ Tree index. Key: Record's avgRating, Value: {blockAddress, offset}.
 void BPlusTree::insert(void *address, int key) {
-    if (BPlusTree::root == nullptr) {
-        OverflowNode *newNode = new OverflowNode(BPlusTree::overflowSize);
-        newNode->pointers[newNode->numKeys] = address;
-        newNode->isLeaf = false;
-        newNode->numKeys += 1;
-        BPlusTree::root = new Node(BPlusTree::maxKeys);
-        BPlusTree::root->isLeaf = true;
-        BPlusTree::root->pointers[0] = newNode;
-        //BPlusTree::root->pointers[maxKeys+1] = nullptr;
-        BPlusTree::root->keys[0] = key;
-        BPlusTree::root->numKeys += 1;
-        // everytime we create new node increment our counter
-        BPlusTree::numNodes += 1;
+    if (root == nullptr) {
+        Node *newNode = new Node(maxKeys);
+        newNode->keys[0] = key;
+        newNode->isLeaf = true;
+        OverflowNode *newOverflow = new OverflowNode(overflowSize);
+        newOverflow->pointers[newOverflow->numKeys] = address;
+        newOverflow->isLeaf = false;
+        newNode->pointers[0] = newOverflow;
+        root = newNode;
     } else {
         Node *cursor = BPlusTree::root;
         Node *parent;
@@ -89,31 +85,27 @@ void BPlusTree::insert(void *address, int key) {
         i = 0;
         // While we haven't reached the last key and the key we want to insert is larger than current key, keep moving forward.
         while (key > cursor->keys[i] && i < cursor->numKeys)i++;
-        //check if its a duplicate key
         if (cursor->keys[i] == key) {
             OverflowNode *overflow = (OverflowNode *) cursor->pointers[i];
-            // if this new node still has space
-            if (overflow->numKeys + 1 < maxKeys) {
+            //while (overflow->pointers[overflowSize - 1] != nullptr) {
+            //    overflow = (OverflowNode *) overflow->pointers[overflowSize - 1];
+            //}
+            if (overflow->numKeys < overflowSize) {
                 overflow->pointers[overflow->numKeys] = address;
                 overflow->numKeys += 1;
-            } else { // create a new overflow node
-                OverflowNode *newNode = new OverflowNode(BPlusTree::overflowSize);
-                newNode->isLeaf = false;
-                newNode->pointers[newNode->numKeys] = address;
-                newNode->numKeys += 1;
-                overflow->pointers[overflow->numKeys] = newNode;
-                // do we also count overflow node?
-                // BPlusTree::numNodes += 1;
+            } else {
+                OverflowNode *newOverflow = new OverflowNode(overflowSize);
+                // overflow->pointers[overflowSize - 1] = newOverflow;
+                newOverflow->pointers[newOverflow->numKeys] = address;
+                newOverflow->numKeys += 1;
+                newOverflow->pointers[overflowSize - 1] = cursor->pointers[i];
+                cursor->pointers[i]  = newOverflow;
             }
         } else {
-            // not a duplicate, we try to insert
-            // do we also count overflow node?
-            // BPlusTree::numNodes += 1;
-            OverflowNode *newNode = new OverflowNode(maxKeys);
-            newNode->pointers[newNode->numKeys] = address;
-            newNode->numKeys += 1;
-            // there is still space in this current node
-            if (cursor->numKeys + 1 <= BPlusTree::maxKeys) {
+            OverflowNode *newOverflow = new OverflowNode(overflowSize);
+            newOverflow->isLeaf = false;
+            newOverflow->pointers[0] = address;
+            if (cursor->numKeys < maxKeys) {
                 for (i=0; i<cursor->numKeys; i++) {
                     if (cursor->keys[i] > key) {
                         break;
@@ -125,20 +117,22 @@ void BPlusTree::insert(void *address, int key) {
                     cursor->keys[j] = cursor->keys[j-1];
                 }
                 // point it to the overflow node
-                cursor->pointers[i] = newNode;
+                cursor->pointers[i] = newOverflow;
                 cursor->keys[i] = key;
                 cursor->numKeys += 1;
-            } else { // no space, we need to split the node
+            } else {
                 // update numNodes
                 BPlusTree::numNodes += 1;
                 Node *tNode = new Node(maxKeys);
                 tNode->isLeaf = true;
-                tNode->pointers[maxKeys+1] = cursor->pointers[maxKeys+1];
-                cursor->pointers[maxKeys+1] = tNode;
+                //tNode->pointers[maxKeys+1] = cursor->pointers[maxKeys+1];
+                //cursor->pointers[maxKeys+1] = tNode;
+                tNode->pointers[maxKeys] = cursor->pointers[maxKeys];
+                cursor->pointers[maxKeys] = tNode;
                 // create a temp vector to hold the maxKeys + 1 items
                 std::vector<pair<int, void*>> tpointers;
                 // push the new item in
-                tpointers.push_back(make_pair(key, newNode));
+                tpointers.push_back(make_pair(key, newOverflow));
                 // move all the items in the node in
                 for (i=0; i<cursor->numKeys; i++) {
                     tpointers.push_back(make_pair(cursor->keys[i], cursor->pointers[i]));
@@ -148,9 +142,11 @@ void BPlusTree::insert(void *address, int key) {
                     return p1.first < p2.first;
                 });
                 // split the node in the middle, the left having ceil(maxKeys+1) / 2, the right having floor(maxKeys+1)/2
-                int middle = ceil((maxKeys + 1)) / 2, j=0;
+                cursor->numKeys = ceil((maxKeys + 1) / 2);
+                tNode->numKeys = (maxKeys + 1) - ceil((maxKeys + 1) / 2);
+                int j=0;
                 for (i=0; i<tpointers.size(); i++) {
-                    if (i < middle) {
+                    if (i < cursor->numKeys) {
                         cursor->pointers[i] = tpointers[i].second;
                         cursor->keys[i] = tpointers[i].first;
                     } else {
@@ -162,8 +158,8 @@ void BPlusTree::insert(void *address, int key) {
                     }
                 }
                 // set the correct numKeys value for the new left and right node
-                cursor->numKeys = middle;
-                tNode->numKeys = (maxKeys + 1) / 2;
+                //cursor->numKeys = middle;
+                //tNode->numKeys = (maxKeys + 1) / 2;
                 // If we are at root (aka root == leaf), then we need to make a new parent root.
                 int internalKey = tNode->keys[0];
 
@@ -196,32 +192,39 @@ void BPlusTree::insert(void *address, int key) {
 // Takes the lower bound of the right child, and the main memory address of the parent and the new child,
 // as well as disk address of parent and new child.
 void BPlusTree::insertInternal(int key, Node *cursor, Node *child) {
-    if (cursor->numKeys + 1 <= BPlusTree::maxKeys) {
+
+    if (cursor->numKeys < maxKeys) {
+        // t
         // Iterate through the parent to see where to put in the lower bound key for the new child.
-        int i = 0, j;
-        while (key > cursor->keys[i] && i < cursor->numKeys)i++;
+        int i = 0;
+        if (isnan(key)) {
+            while (child->keys[child->numKeys] > cursor->keys[i])i++;
+        } else {
+            while (key > cursor->keys[i] && i < cursor->numKeys)i++;
+        }
+
+
         // Now we have i, the index to insert the key in. Bubble swap all keys back to insert the new child's key.
         // We use numKeys as index since we are going to be inserting a new key.
-        for (j=cursor->numKeys; j > i; j--) {
-            cursor->keys[j] = cursor->keys[j-1];
+        for (int j = cursor->numKeys; j > i; j--) {
+            cursor->keys[j] = cursor->keys[j - 1];
         }
 
         // Shift all pointers one step right (right pointer of key points to lower bound of key).
-        for (j=cursor->numKeys+1; j>i+1; j--) {
-            cursor->pointers[j] = cursor->pointers[j-1];
+        for (int j = cursor->numKeys + 1; j > i + 1; j--) {
+            cursor->pointers[j] = cursor->pointers[j - 1];
         }
 
         // Add in new child's lower bound key and pointer to the parent.
         cursor->keys[i] = key;
-        cursor->pointers[i+1] = child;
         cursor->numKeys++;
+        cursor->pointers[i + 1] = child;
     } else {
         // If parent node doesn't have space, we need to recursively split parent node and insert more parent nodes.
 
         // Make new internal node (split this parent node into two).
         // Note: We DO NOT add a new key, just a new pointer!
         Node *newInternal = new Node(maxKeys);
-        newInternal->isLeaf = false;
         numNodes++;
 
         // Same logic as above, keep a temp list of keys and pointers to insert into the split nodes.
@@ -231,41 +234,51 @@ void BPlusTree::insertInternal(int key, Node *cursor, Node *child) {
 
         // Copy all keys into a temp key list.
         // Note all keys are filled so we just copy till maxKeys.
-        for (int i = 0; i <= maxKeys; i++) {
-            if (i < maxKeys) {
-                tempKeyList[i] = cursor->keys[i];
-            }
+        for (int i = 0; i < maxKeys; i++) {
+            tempKeyList[i] = cursor->keys[i];
+        }
+
+        // Copy all pointers into a temp pointer list.
+        // There is one more pointer than keys in the node so maxKeys + 1.
+        for (int i = 0; i < maxKeys + 1; i++) {
             tempPointerList[i] = (Node *) cursor->pointers[i];
         }
 
         // Find index to insert key in temp key list.
-        int i = 0, j;
-        while (key > tempKeyList[i] && i < maxKeys)i++;
+        int i = 0;
+        if (isnan(key)) {
+            while (child->keys[child->numKeys] > tempKeyList[i])i++;
+        } else {
+            while (key > tempKeyList[i] && i < maxKeys)i++;
+        }
 
         // Swap all elements higher than index backwards to fit new key.
-        for (j=maxKeys; j>i; j--) {
-            tempKeyList[j] = tempKeyList[j-1];
-        }
-        for (j=maxKeys+1; j>i+1; j--) {
-            tempPointerList[j] = tempPointerList[j-1];
+        int j;
+        for (int j = maxKeys; j > i; j--) {
+            tempKeyList[j] = tempKeyList[j - 1];
         }
 
         // Insert new key into array in the correct spot (sorted).
         tempKeyList[i] = key;
+
+        // Move all pointers back to fit new child's pointer as well.
+        //2????
+        for (int j = maxKeys + 1; j > i + 1; j--) {
+            tempPointerList[j] = tempPointerList[j - 1];
+        }
+
         // Insert a pointer to the child to the right of its key.
-        tempPointerList[i+1] = child;
+        tempPointerList[i + 1] = child;
+        newInternal->isLeaf = false; // Can't be leaf as it's a parent.
 
         // Split the two new nodes into two. ⌊(n)/2⌋ keys for left.
         // For right, we drop the rightmost key since we only need to represent the pointer.
-        cursor->numKeys = ceil((maxKeys + 1) / 2);
+        cursor->numKeys = (maxKeys + 1) / 2;
         newInternal->numKeys = maxKeys - (maxKeys + 1) / 2;
-        // Reassign keys into cursor from tempkeyslist to account for new child node
-        for (i = 0; i < cursor->numKeys; i++) {
-            cursor->keys[i] = tempKeyList[i];
-        }
 
-        for (i = 0; i < cursor->numKeys + 1; i++) {
-            cursor->pointers[i] = tempPointerList[i];
+        // Reassign keys into cursor from tempkeyslist to account for new child node
+        for (int i = 0; i < cursor->numKeys; i++) {
+            cursor->keys[i] = tempKeyList[i];
         }
 
         // Insert new keys into the new internal parent node.
@@ -273,20 +286,27 @@ void BPlusTree::insertInternal(int key, Node *cursor, Node *child) {
             newInternal->keys[i] = tempKeyList[j];
         }
 
+        for (i = 0; i < cursor->numKeys + 1; i++) {
+            cursor->pointers[i] = tempPointerList[i];
+        }
+
         // Insert pointers into the new internal parent node.
         for (i = 0, j = cursor->numKeys + 1; i < newInternal->numKeys + 1; i++, j++) {
             newInternal->pointers[i] = tempPointerList[j];
         }
-        //for (i = cursor->numKeys; i < maxKeys; i++) {
-         //   cursor->keys[i] = float();
-        //}
+        for (int i = cursor->numKeys; i < maxKeys; i++) {
+            cursor->keys[i] = float();
+        }
 
-        //for (i = cursor->numKeys + 2; i < maxKeys + 1; i++) {
-        //    cursor->pointers[i] = nullptr;
-        //}
+        for (int i = cursor->numKeys + 2; i < maxKeys + 1; i++) {
+            cursor->pointers[i] = nullptr;
+        }
+
+
 
         // assign the new child to the original parent
         //cursor->pointers[cursor->numKeys] = child;
+
 
         // If current cursor is the root of the tree, we need to create a new root.
         if (cursor == root) {
@@ -306,6 +326,7 @@ void BPlusTree::insertInternal(int key, Node *cursor, Node *child) {
             newRoot->numKeys = 1;
 
             root = newRoot;
+
         }
             // Otherwise, parent is internal, so we need to split and make a new parent internally again.
             // This is done recursively if needed.

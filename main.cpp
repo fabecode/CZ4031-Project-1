@@ -8,7 +8,7 @@
 
 using namespace std;
 
-double calculateAverage(disk *Disk, vector<void *> &items);
+double calculateAverage(disk *Disk, vector<void *> &items, int overflowSize);
 
 int main(int argc, char **argv) {
     // reset buffer
@@ -22,8 +22,8 @@ int main(int argc, char **argv) {
     =============================================================
     */
     std::cout << "==================Experiment 1==================" << endl;
-    disk *Disk = new disk(150000000, 500); // 150MB
-    BPlusTree *bplustree = new BPlusTree(500);
+    disk *Disk = new disk(150000000, 200); // 150MB
+    BPlusTree *bplustree = new BPlusTree(200);
     std::ifstream infile("./data.tsv");
     if (!infile){
         std::cerr << "File failed to open.\n";
@@ -72,7 +72,7 @@ int main(int argc, char **argv) {
     std::cout << endl;
     std::cout << "\n1st Child Node: " << endl;
     bplustree->displayNode((Node *)bplustree->getRoot()->pointers[0]);
-    //bplustree.display();
+    //bplustree->display();
     //Node *root = bplustree.getRoot();
     //Node *firstChild = (Node *) root->pointers[0];
 
@@ -107,7 +107,7 @@ int main(int argc, char **argv) {
     }
     bplustree->removeT();
     std::cout << "Average of averageRating's of the records returned: " << endl;
-    cout << calculateAverage(Disk, temp) << endl;
+    cout << calculateAverage(Disk, temp, bplustree->overflowSize) << endl;
 
 
     /*
@@ -142,7 +142,7 @@ int main(int argc, char **argv) {
     
     std::cout << "Content of data blocks the process accesses: " << endl;
     std::cout << "Average of averageRating's of the records that are returned: " << endl;
-    cout << calculateAverage(Disk, temp2) << endl;
+    cout << calculateAverage(Disk, temp2, bplustree->overflowSize) << endl;
  
 
     /*
@@ -170,35 +170,44 @@ int main(int argc, char **argv) {
     std::cout << "\n1st Child Node of updated B+ tree: " << endl;
     bplustree->displayNode((Node *)bplustree->getRoot()->pointers[0]);
 
-    delete Disk;
-    delete bplustree;
+    // delete Disk;
+    // delete bplustree;
 }
 
-double calculateAverage(disk *Disk, vector<void *> &items) {
+double calculateAverage(disk *Disk, vector<void *> &items, int overflowSize) {
     float avg = 0;
     int count = 0;
     for (int i=0; i<items.size(); i++) { //iterate through the vector to print the records
         OverflowNode *overflow = (OverflowNode *)items[i];
-        for (int j=0; j<=overflow->numKeys; j++) {
-            if (j == overflow->numKeys) {
-                overflow = (OverflowNode *) overflow->pointers[overflow->numKeys];
-                j = 0;
-            }
-            if (overflow == nullptr) {
-                break;
-            }
-            blockAddress *bAddr = (blockAddress *) overflow->pointers[j];
-            if (bAddr->index == 1084647014) {
-                cout << "hey" << endl;
-                break;
-            }
-            block *dBlock = Disk->getBlock(bAddr->index);
+        while (overflow != nullptr) {
+            for (int j=0; j<overflow->numKeys; j++) {
+                blockAddress *bAddr = (blockAddress *) overflow->pointers[j];
+                block *dBlock = Disk->getBlock(bAddr->index);
 
-            record R;
-            std::memcpy(&R, (char *) dBlock->records+bAddr->offset, sizeof(record));
-            avg += R.averageRating;
-            count += 1;
+                record R;
+                std::memcpy(&R, (char *) dBlock->records+bAddr->offset, sizeof(record));
+                //cout << R.tconst << " " << R.averageRating << " " << R.numVotes << endl;
+                avg += R.averageRating;
+                count += 1;
+            }
         }
+//        for (int j=0; j<overflow->numKeys; j++) {
+//            if (j == overflow->numKeys - 1) {
+//                overflow = (OverflowNode *) overflow->pointers[overflowSize - 1];
+//                j = 0;
+//            }
+//            if (overflow == nullptr) {
+//                break;
+//            }
+//            blockAddress *bAddr = (blockAddress *) overflow->pointers[j];
+//            block *dBlock = Disk->getBlock(bAddr->index);
+//
+//            record R;
+//            std::memcpy(&R, (char *) dBlock->records+bAddr->offset, sizeof(record));
+//            cout << R.tconst << " " << R.averageRating << " " << R.numVotes << endl;
+//            avg += R.averageRating;
+//            count += 1;
+//        }
     }
     return avg / (count * 1.0);
 }
