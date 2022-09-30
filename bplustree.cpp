@@ -356,51 +356,142 @@ Node *BPlusTree::findParent(Node *cursor, Node *child) {
 
 std::vector<void *> BPlusTree::searchNumVotes(int lowerBoundKey, int upperBoundKey) {
     //search logic
-    if (root == nullptr) {
-        // return empty vector
-        return {};
-        // throw std::logic_error("Tree is empty");
-    }
-    Node *cursor = root;
-    //in the following while loop, cursor will travel to the leaf node possibly consisting the key
-    while (!cursor->isLeaf) {
-        t.push_back(cursor);
-        for (int i = 0; i < cursor->numKeys; i++) {
-            if (lowerBoundKey <= cursor->keys[i]) {//Keep looping till data hit upper bound and stop
-                cursor = (Node *) cursor->pointers[i];
-                //Add new feature to push data into vector for comparison against logic later
-                break;
-            }
-            if (i == cursor->numKeys - 1) {
-                cursor = (Node *) cursor->pointers[i + 1];
-                break;
-            }
-        }
-    }
+    if (root == NULL) {
+        throw std::logic_error("Tree is empty");
+    } else {
+        Node *cursor = root;
+        //in the following while loop, cursor will travel to the leaf node possibly consisting the key
+        while (cursor->isLeaf == false) {
+            t.push_back(cursor);
+            for (int i = 0; i < cursor->numKeys; i++) {
+                if (isnan(cursor->keys[i]) || lowerBoundKey < cursor->keys[i]) {//Keep looping till data hit upper bound and stop
+                    for (int j = 0; j < cursor->numKeys; j++) {
+                        cout << cursor->keys[j] << " ";
+                    }
+                    cout << "\n";
 
-    //in the following for loop, we search for the key if it exists
-    // cursor will be in the correct leaf node - vector is a dynamic array that stores all the addresses
-    std::vector<void *> records;
-    int i = 0;
-    while (lowerBoundKey > cursor->keys[i] && i < cursor->numKeys)i++;
-    for (; i<=cursor->numKeys; i++) {
-        if (i == cursor->numKeys) {
-            cursor = (Node *) cursor->pointers[maxKeys+1];
-            i = 0;
+                    cursor = (Node *) cursor->pointers[i];
+                    //Add new feature to push data into vector for comparison against logic later
+
+                    break;
+                }
+                if (i == cursor->numKeys - 1) {
+                    for (int j = 0; j < cursor->numKeys; j++) {
+                        cout << cursor->keys[j] << " ";
+                    }
+                    cout << "\n";
+
+                    cursor = (Node *) cursor->pointers[i + 1];
+                    break;
+                }
+            }
         }
-        if (cursor == nullptr) {
-            break;
+
+        //in the following for loop, we search for the key if it exists
+        // cursor will be in the correct leaf node - vector is a dynamic array that stores all the addresses
+
+        std::vector<void *> records;
+        cout << "vector initialized" << endl;
+        int i = 0;
+        int x = 0;
+        float key = cursor->keys[0];
+        for (int j = 0; j < (int) cursor->numKeys; j++) {
+            cout << cursor->keys[j] << " ";
         }
-        if (records.size() == 44) {
-            cout << "here" << endl;
+        cout << endl;
+        // move cursor to correct lower bound
+        for( i = 0; i < cursor->numKeys; i++){
+            key = cursor->keys[i];
+            if(key >= lowerBoundKey) break;
         }
-        if (cursor->keys[i] > upperBoundKey) {
-            break;
+        // or the key that >= lowerbound might be at the next node
+        if( i == cursor->numKeys ){
+            cout << cursor->numKeys << endl;
+            cursor = (Node *) cursor->pointers[maxKeys];
+
+            if(!cursor)return records;
+            if( cursor->keys[0] >= lowerBoundKey )i = 0;
+            else{
+                // not record within the range
+                return records;
+            }
         }
-        records.push_back(cursor->pointers[i]);
+        cout << "Key here: " << cursor->keys[i] << endl;
+        cout << "key:" << key << ",lowerBoundKey: " << lowerBoundKey << ", upperBoundKey:" << upperBoundKey << endl;
+
+        /*start traversing through all the leaf till we meet upper bound*/
+        x=i;
+        while( cursor->keys[x]<=upperBoundKey){
+            //Handle overflownode contents
+            OverflowNode *ofnode = (OverflowNode *)cursor->pointers[x];
+            for(int j = 0; j < ofnode->numKeys ; j++){
+                records.push_back(ofnode->pointers[j]);
+            }
+
+            //key = cursor->keys[x];
+            x++;
+
+            if(x == cursor->numKeys){
+                //for(int y =0; y < maxKeys; y ++ )
+                if(cursor->pointers[maxKeys]){
+                    cursor = (Node *) cursor->pointers[maxKeys];
+                    x = 0;
+                }
+                else break;
+            }
+
+        }
+        return records;
     }
-    return records;
 }
+
+//std::vector<void *> BPlusTree::searchNumVotes(int lowerBoundKey, int upperBoundKey) {
+//    //search logic
+//    if (root == nullptr) {
+//        // return empty vector
+//        return {};
+//        // throw std::logic_error("Tree is empty");
+//    }
+//    Node *cursor = root;
+//    //in the following while loop, cursor will travel to the leaf node possibly consisting the key
+//    while (!cursor->isLeaf) {
+//        t.push_back(cursor);
+//        for (int i = 0; i < cursor->numKeys; i++) {
+//            if (lowerBoundKey <= cursor->keys[i]) {//Keep looping till data hit upper bound and stop
+//                cursor = (Node *) cursor->pointers[i];
+//                //Add new feature to push data into vector for comparison against logic later
+//                break;
+//            }
+//            if (i == cursor->numKeys - 1) {
+//                cursor = (Node *) cursor->pointers[i + 1];
+//                break;
+//            }
+//        }
+//    }
+//
+//    //in the following for loop, we search for the key if it exists
+//    // cursor will be in the correct leaf node - vector is a dynamic array that stores all the addresses
+//    std::vector<void *> records;
+//    int i = 0;
+//    while (lowerBoundKey > cursor->keys[i] && i < cursor->numKeys)i++;
+//    for (; i<=cursor->numKeys; i++) {
+//        if (i == cursor->numKeys) {
+//            cursor = (Node *) cursor->pointers[maxKeys+1];
+//            i = 0;
+//        }
+//        if (cursor == nullptr) {
+//            break;
+//        }
+//        if (records.size() == 44) {
+//            cout << "here" << endl;
+//        }
+//        if (cursor->keys[i] > upperBoundKey) {
+//            break;
+//        }
+//        records.push_back(cursor->pointers[i]);
+//    }
+//    return records;
+//}
 
 // Display a node and its contents in the B+ Tree.
 void BPlusTree::displayNode(Node *node) {
@@ -542,7 +633,7 @@ void BPlusTree::remove(int key) {
 
         //Found the key, delete overflow nodes
         OverflowNode *curr = (OverflowNode*) cursor->pointers[pos];
-        delete curr;
+        free(curr);
 
         //start shifting keys forward to replace it
         for (int i = pos; i < cursor->numKeys; i++) {
@@ -574,19 +665,19 @@ void BPlusTree::remove(int key) {
             }
             return;
         }
-        
+
         if (cursor->numKeys >= (maxKeys + 1) / 2) {
             return;
         }
         if (leftSibling >= 0) {
             Node *leftNode = (Node *) parent->pointers[leftSibling];
-            
+
             //Check if able to borrow from left
             if (leftNode->numKeys >= (maxKeys + 1) / 2 + 1) {
 
                 //Shift the last pointers first
                 cursor->pointers[cursor->numKeys + 1] = cursor->pointers[cursor->numKeys];
-                
+
                 //Shift both keys and pointers backward
                 for (int i = cursor->numKeys; i > 0; i--) {
                     cursor->keys[i] = cursor->keys[i - 1];
@@ -598,10 +689,10 @@ void BPlusTree::remove(int key) {
                 cursor->keys[0] = leftNode->keys[leftNode->numKeys - 1];
                 cursor->pointers[0] = leftNode->pointers[leftNode->numKeys - 1];
 
-                // //set current node's last pointers
+                // set current node's last pointers
                 // cursor->pointers[cursor->numKeys] = cursor->pointers[cursor->numKeys - 1];
                 // cursor->pointers[cursor->numKeys - 1] = NULL;
-                
+
                 leftNode->numKeys--;
                 leftNode->pointers[leftNode->numKeys] = cursor;
                 leftNode->pointers[leftNode->numKeys + 1] = nullptr;
@@ -635,7 +726,7 @@ void BPlusTree::remove(int key) {
                 leftNode->pointers[i] = cursor->pointers[j];
             }
             leftNode->numKeys += cursor->numKeys;
-            leftNode->pointers[leftNode->numKeys] = cursor->pointers[cursor->numKeys];
+            leftNode->pointers[maxKeys] = cursor->pointers[maxKeys];
             removeInternal(parent->keys[leftSibling], parent, cursor);
             delete[] cursor->keys;
             delete[] cursor->pointers;
@@ -647,7 +738,7 @@ void BPlusTree::remove(int key) {
                 cursor->pointers[i] = rightNode->pointers[j];
             }
             cursor->numKeys += rightNode->numKeys;
-            cursor->pointers[cursor->numKeys] = rightNode->pointers[rightNode->numKeys];
+            cursor->pointers[maxKeys] = rightNode->pointers[maxKeys];
             cout << "Merging two leaf nodes\n";
             removeInternal(parent->keys[rightSibling - 1], parent, rightNode);
             delete[] rightNode->keys;
@@ -655,7 +746,7 @@ void BPlusTree::remove(int key) {
             delete rightNode;
         }
     }
-   
+
 }
 
 

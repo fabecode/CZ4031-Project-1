@@ -190,6 +190,7 @@ double calculateAverage(disk *Disk, vector<void *> &items, int overflowSize) {
                 avg += R.averageRating;
                 count += 1;
             }
+            overflow = (OverflowNode *) overflow->pointers[overflowSize - 1];
         }
 //        for (int j=0; j<overflow->numKeys; j++) {
 //            if (j == overflow->numKeys - 1) {
