@@ -11,10 +11,10 @@ using namespace std;
 double calculateAverage(disk *Disk, vector<void *> &items);
 
 int main(int argc, char **argv) {
-    int blocksize = 200;
-    ofstream out1("results_" + to_string(blocksize) + "B.txt");
-    streambuf *coutbuf = std::cout.rdbuf();
-    std::cout.rdbuf(out1.rdbuf());
+    int blocksize = 500;
+    //ofstream out1("results_" + to_string(blocksize) + "B.txt");
+    //streambuf *coutbuf = std::cout.rdbuf();
+    //std::cout.rdbuf(out1.rdbuf());
     // ofstream out = ofstream("output2.txt");
     /*
     =============================================================
@@ -145,7 +145,7 @@ int main(int argc, char **argv) {
     //cout << avg2 / temp2.size() << endl;
     bplustree->removeT();
     std::cout << "Content of data blocks the process accesses: " << endl;
-    average = calculateAverage(Disk, temp);
+    average = calculateAverage(Disk, temp2);
     std::cout << "Number of data blocks the process accesses: " << Disk->getTimesAccessed() << endl;
     Disk->resetTimesAccessed();
     std::cout << "Average of averageRating's of the records returned: " << average << endl;

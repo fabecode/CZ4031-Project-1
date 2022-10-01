@@ -46,7 +46,7 @@ blockAddress *disk::insertRecord(std::string tconst, float averageRating, int nu
     tRecord.tconst[tconst.length()] = '\0';
 
     // current last block cannot fit a new record, we "allocate" a new block, which is to move the currentIndex by 1
-    if (current.second + 19 > disk::blocksize) {
+    if (current.second + 19 > disk::blocksize || toffset >= disk::blocksize) {
         bool result = allocateBlock();
         // disk is full and cannot allocate new block
         if (!result) {
@@ -96,7 +96,8 @@ void disk::printitems(blockAddress *baddr) {
 void disk::printBlock(void *block, int index) {
     char testBlock[sizeof(record)];
     memset(testBlock, '\0', sizeof(record));
-    int items = disk::blocksize / 19;
+    // actually number of items is lower, due to padding bytes
+    int items = disk::blocksize / sizeof(record);
     cout << "------------------Printing contents of block "<< index <<"-------------------------" << endl;
     for (int j=0; j<items; j++) {
         record tt;
@@ -133,7 +134,7 @@ bool disk::allocateBlock() {
 record *disk::getRecord(blockAddress *addr) {
     // everytime we retrieve a block, increment the access time
     void *block = getBlock(addr->index);
-    printBlock(block, addr->index);
+    //printBlock(block, addr->index);
     record *r = new record();
     memcpy(r, (char *)block+addr->offset, sizeof(record));
     return r;
