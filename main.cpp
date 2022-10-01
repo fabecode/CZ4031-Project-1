@@ -12,7 +12,8 @@ double calculateAverage(disk *Disk, vector<void *> &items);
 
 int main(int argc, char **argv) {
     // reset buffer
-    streambuf *coutbuf = std::cout.rdbuf();
+    // streambuf *coutbuf = std::cout.rdbuf();
+    ofstream out = ofstream("output.txt");
     /*
     =============================================================
     Experiment 1:
@@ -22,8 +23,8 @@ int main(int argc, char **argv) {
     =============================================================
     */
     std::cout << "==================Experiment 1==================" << endl;
-    disk *Disk = new disk(150000000, 200); // 150MB
-    BPlusTree *bplustree = new BPlusTree(200);
+    disk *Disk = new disk(150000000, 500); // 150MB
+    BPlusTree *bplustree = new BPlusTree(500);
     std::ifstream infile("./data.tsv");
     if (!infile){
         std::cerr << "File failed to open.\n";
@@ -42,7 +43,7 @@ int main(int argc, char **argv) {
         }
 
         infile >> str >> avgRate >> nVotes;
-        blockAddress *addr = Disk->insertRecord(str, avgRate, nVotes);
+        char *addr = Disk->insertRecord(str, avgRate, nVotes);
         bplustree->insert(addr, nVotes);
     }
     // Report statistics
@@ -167,8 +168,8 @@ int main(int argc, char **argv) {
     std::cout << endl;
     std::cout << "\n1st Child Node of updated B+ tree: " << endl;
     bplustree->displayNode((Node *)bplustree->getRoot()->pointers[0]);
-
-    delete Disk;
+    exit(0);
+    // delete Disk;
     // delete bplustree;
 }
 
@@ -176,7 +177,10 @@ double calculateAverage(disk *Disk, vector<void *> &items) {
     float avg = 0;
     int count = 0;
     for (int i=0; i<items.size(); i++) { //iterate through the vector to print the records
-        record *r = Disk->getRecord((blockAddress *) items[i]);
+        //record *r = Disk->getRecord((blockAddress *) items[i]);
+        //avg += r->averageRating;
+        //count += 1;
+        record *r = (record *)items[i];
         avg += r->averageRating;
         count += 1;
     }

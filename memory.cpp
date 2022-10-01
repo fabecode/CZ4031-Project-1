@@ -25,7 +25,7 @@ disk::~disk() {
 }
 
 // insert a new tuple into disk
-blockAddress *disk::insertRecord(std::string tconst, float averageRating, int numVotes) {
+char *disk::insertRecord(std::string tconst, float averageRating, int numVotes) {
     record tRecord = record();
     tRecord.averageRating = averageRating;
     tRecord.numVotes = numVotes;
@@ -48,8 +48,8 @@ blockAddress *disk::insertRecord(std::string tconst, float averageRating, int nu
         blockAddress *bAddr = new blockAddress();
         bAddr->index = i.first;
         bAddr->offset = offset;
-        // return (char *)i.second;
-        return bAddr;
+        return (char *)i.second;
+        // return bAddr;
     }
 
     // try inserting to the last block if there is space in the block and on the disk
@@ -65,7 +65,8 @@ blockAddress *disk::insertRecord(std::string tconst, float averageRating, int nu
         tblock->size += 19;
         // count the bytes used
         disk::size += 19;
-        return bAddr;
+        // return bAddr;
+        return addr;
     } else {
         // No previously reclaimed space, and we cannot insert a new block
         if (disk::freed.empty() && diskFull()) {
@@ -93,7 +94,8 @@ blockAddress *disk::insertRecord(std::string tconst, float averageRating, int nu
         disk::blocks.push_back(tBlock);
         disk::size += tBlock->size;
         disk::numBlocks += 1;
-        return bAddr;
+        // return bAddr;
+        return addr;
     }
 }
 
