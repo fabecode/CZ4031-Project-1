@@ -20,8 +20,7 @@ class disk {
     private:
         void *memory;
         std::vector<std::pair<int, int>> freed;
-        // currentIndex, currentSize
-        std::pair<int, int> current;
+        int currentIndex;
         int size;
         int blocksize;
         int numBlocks;

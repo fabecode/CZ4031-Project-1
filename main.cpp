@@ -11,10 +11,10 @@ using namespace std;
 double calculateAverage(disk *Disk, vector<void *> &items);
 
 int main(int argc, char **argv) {
-    int blocksize = 500;
-    //ofstream out1("results_" + to_string(blocksize) + "B.txt");
-    //streambuf *coutbuf = std::cout.rdbuf();
-    //std::cout.rdbuf(out1.rdbuf());
+    int blocksize = 200;
+    ofstream out1("results_" + to_string(blocksize) + "B.txt");
+    streambuf *coutbuf = std::cout.rdbuf();
+    std::cout.rdbuf(out1.rdbuf());
     // ofstream out = ofstream("output2.txt");
     /*
     =============================================================
@@ -25,9 +25,8 @@ int main(int argc, char **argv) {
     =============================================================
     */
     std::cout << "==================Experiment 1==================" << endl;
-    disk *Disk = new disk(100000000, blocksize); // 150MB
+    disk *Disk = new disk(100000000, blocksize); // 100MB
     BPlusTree *bplustree = new BPlusTree(blocksize);
-    std::vector<blockAddress *> b;
     std::ifstream infile("./data.tsv");
     if (!infile){
         std::cerr << "File failed to open.\n";
@@ -47,7 +46,6 @@ int main(int argc, char **argv) {
 
         infile >> str >> avgRate >> nVotes;
         blockAddress *addr = Disk->insertRecord(str, avgRate, nVotes);
-        b.push_back(addr);
         bplustree->insert(addr, nVotes);
     }
     // Report statistics
