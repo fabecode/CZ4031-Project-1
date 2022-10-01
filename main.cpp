@@ -7,13 +7,13 @@
 #include "bplustree.h"
 
 using namespace std;
-
+// ofstream out = ofstream("output2.txt");
 double calculateAverage(disk *Disk, vector<void *> &items);
 
 int main(int argc, char **argv) {
     // reset buffer
     // streambuf *coutbuf = std::cout.rdbuf();
-    ofstream out = ofstream("output.txt");
+
     /*
     =============================================================
     Experiment 1:
@@ -22,11 +22,11 @@ int main(int argc, char **argv) {
       - The size of database;
     =============================================================
     */
-    std::vector<blockAddress *> b;
     std::cout << "==================Experiment 1==================" << endl;
     // out << "==================Experiment 1==================" << endl;
     disk *Disk = new disk(100000000, 200); // 150MB
     BPlusTree *bplustree = new BPlusTree(200);
+    std::vector<blockAddress *> b;
     std::ifstream infile("./data.tsv");
     if (!infile){
         std::cerr << "File failed to open.\n";
@@ -46,13 +46,14 @@ int main(int argc, char **argv) {
 
         infile >> str >> avgRate >> nVotes;
         blockAddress *addr = Disk->insertRecord(str, avgRate, nVotes);
+        b.push_back(addr);
         bplustree->insert(addr, nVotes);
     }
     // Report statistics
     //Size of database = size of relational data + index
     Disk->reportStatistics();
-    out << Disk->getSizeMB() << endl;
-    //bplustree->display();
+    bplustree->display();
+
     /*
     =============================================================
     Experiment 2:
@@ -98,6 +99,7 @@ int main(int argc, char **argv) {
     std::cout << "\n==================Experiment 3==================" << endl;
     std::cout << "Retrieve movies with numVotes equal to 500..." << endl;
     vector<void *> temp = bplustree->searchNumVotes(500, 500);
+    float average = calculateAverage(Disk, temp);
     // number of index nodes accessed is the height of bplus tree - 1
     std::cout << "Number of index nodes the process accesses: " << bplustree->getHeight(bplustree->getRoot()) - 1 << endl;
     std::cout << "Content of index nodes (first 5 nodes): " << endl;
@@ -109,8 +111,10 @@ int main(int argc, char **argv) {
         }
     }
     bplustree->removeT();
-    std::cout << "Average of averageRating's of the records returned: " << endl;
-    cout << calculateAverage(Disk, temp) << endl;
+    std::cout << "Number of data blocks the process accesses: " << Disk->getTimesAccessed() << endl;
+    Disk->resetTimesAccessed();
+    std::cout << "Content of data blocks the process accesses: " << endl;
+    std::cout << "Average of averageRating's of the records returned: " << average << endl;
 
     /*
     =============================================================
@@ -129,6 +133,7 @@ int main(int argc, char **argv) {
     std::cout << "Number of index nodes the process accesses: " << bplustree->getHeight(bplustree->getRoot()) - 1<< endl;
     std::cout << "Content of index nodes the process accesses: " << endl;
     vector<Node *> indexT = bplustree->getT();
+    average = calculateAverage(Disk, temp2);
     for (int i=0; i<indexT.size(); i++) {
         bplustree->displayNode(indexT[i]);
         if (i >= 5) {
@@ -138,14 +143,10 @@ int main(int argc, char **argv) {
     //cout << avg2 / temp2.size() << endl;
     //bplustree->removeT();
     
-    std::cout << "Number of data blocks the process accesses: " << endl;
-    //cout << avg2 / temp2.size() << endl;
-    
-    
+    std::cout << "Number of data blocks the process accesses: " << Disk->getTimesAccessed() << endl;
     std::cout << "Content of data blocks the process accesses: " << endl;
-    std::cout << "Average of averageRating's of the records that are returned: " << endl;
-    cout << calculateAverage(Disk, temp2 ) << endl;
- 
+    Disk->resetTimesAccessed();
+    std::cout << "Average of averageRating's of the records that are returned: " << average << endl;
 
     /*
     =============================================================
@@ -181,18 +182,9 @@ double calculateAverage(disk *Disk, vector<void *> &items) {
     int count = 0;
     cout << "item size: " << items.size() << endl;
     for (int i=0; i<items.size(); i++) { //iterate through the vector to print the records
-        blockAddress *address = (blockAddress *) items[i];
-        //record *r = (record*) address->addr;
-        //if (address->index == 1084647014) {
-        //    cout << "here" << endl;
-        //}
-        //Disk->printitems(address->index);
         record *r = Disk->getRecord((blockAddress *) items[i]);
         avg += r->averageRating;
         count += 1;
-        //record *r = (record *)items[i];
-        //avg += r->averageRating;
-        //count += 1;
     }
     return avg / (count * 1.0);
 }

@@ -23,16 +23,14 @@ struct blockAddress {
 
 class disk {
     private:
-        // std::vector<block *> blocks;
-        //block **blocks;
         void *memory;
-        std::vector<std::pair<int, char*>> freed;
+        std::vector<std::pair<int, int>> freed;
         int size;
         int blocksize;
         int numBlocks;
         int capacity;
         int timesAccessed;
-        void *currentBlock;
+        int totalBlocks;
         int currentindex;
         int toffset;
         int currentSize;
@@ -59,10 +57,7 @@ class disk {
         // insert new record into empty block
         blockAddress *insertRecord(std::string tconst, float averageRating, int numVotes);
 
-        // deletes a record based on the key
-        void deleteRecord(std::string key);
-
-        //void deleteRecord(blockAddress *bAddr);
+        void deleteRecord(blockAddress *bAddr);
 
         bool diskFull();
 

@@ -4,7 +4,7 @@
 #include <array>
 #include <vector>
 #include "memory.h"
-
+#include <fstream>
 
 using namespace std;
 
@@ -12,28 +12,27 @@ using namespace std;
 class Node {
     public:
         // Variables
-        void **pointers;                                  //to store Node address or record address
-        int *keys;                                      //ptr to arr of key
-        int numKeys;                                      //num of key
-        bool isLeaf;                                      //true/false
+        void **pointers;
+        int *keys;
+        int numKeys;
+        bool isLeaf;
         Node(int maxKeys);
 };
 
 class OverflowNode {
     public:
-        void **pointers;                                  //to store Node address or record address
-        int numKeys;                                      //num of key
-        bool isLeaf;                                      //true/false
+        void **pointers;
+        int numKeys;
+        bool isLeaf;
         OverflowNode(int maxKeys);
 };
 
 class BPlusTree {
     public:
         // Variables
-        int maxKeys;          //max num of key
-        int numNodes;         //num of node
-        Node *root;           //ptr to main main root
-        //void *rootAddress;    //ptr to root address
+        int maxKeys;
+        int numNodes;
+        Node *root;
 
         int overflowSize;
         vector<Node *> t;
