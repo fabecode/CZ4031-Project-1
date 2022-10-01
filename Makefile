@@ -15,3 +15,5 @@ memory.o : memory.cpp
 bplustree.o : bplustree.cpp
 	$(CC) $(CFLAGS) -c bplustree.cpp
 
+clean :
+	rm *.o
