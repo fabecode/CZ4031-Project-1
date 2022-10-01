@@ -5,8 +5,6 @@
 #include <cstring>
 #include "memory.h"
 #include "bplustree.h"
-#include "memory.cpp"
-#include "bplustree.cpp"
 
 using namespace std;
 
