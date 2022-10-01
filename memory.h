@@ -20,15 +20,15 @@ class disk {
     private:
         void *memory;
         std::vector<std::pair<int, int>> freed;
+        // currentIndex, currentSize
+        std::pair<int, int> current;
         int size;
         int blocksize;
         int numBlocks;
         int capacity;
         int timesAccessed;
         int totalBlocks;
-        int currentindex;
         int toffset;
-        int currentSize;
     public:
         disk(int capacity, int blocksize);
 
@@ -39,6 +39,8 @@ class disk {
 
         // fetch record
         record *getRecord(blockAddress *addr);
+
+        void *getBlock(int index);
 
         // output the number of blocks used and the size of the database
         void reportStatistics();
@@ -51,7 +53,7 @@ class disk {
 
         void deleteRecord(blockAddress *bAddr);
 
-        bool diskFull();
+        bool allocateBlock();
 
         int getTimesAccessed() {
             return disk::timesAccessed;
