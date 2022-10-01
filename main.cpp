@@ -22,9 +22,11 @@ int main(int argc, char **argv) {
       - The size of database;
     =============================================================
     */
+    std::vector<blockAddress *> b;
     std::cout << "==================Experiment 1==================" << endl;
-    disk *Disk = new disk(150000000, 500); // 150MB
-    BPlusTree *bplustree = new BPlusTree(500);
+    // out << "==================Experiment 1==================" << endl;
+    disk *Disk = new disk(100000000, 200); // 150MB
+    BPlusTree *bplustree = new BPlusTree(200);
     std::ifstream infile("./data.tsv");
     if (!infile){
         std::cerr << "File failed to open.\n";
@@ -43,12 +45,13 @@ int main(int argc, char **argv) {
         }
 
         infile >> str >> avgRate >> nVotes;
-        char *addr = Disk->insertRecord(str, avgRate, nVotes);
+        blockAddress *addr = Disk->insertRecord(str, avgRate, nVotes);
         bplustree->insert(addr, nVotes);
     }
     // Report statistics
     //Size of database = size of relational data + index
     Disk->reportStatistics();
+    out << Disk->getSizeMB() << endl;
     //bplustree->display();
     /*
     =============================================================
@@ -168,21 +171,28 @@ int main(int argc, char **argv) {
     std::cout << endl;
     std::cout << "\n1st Child Node of updated B+ tree: " << endl;
     bplustree->displayNode((Node *)bplustree->getRoot()->pointers[0]);
-    exit(0);
-    // delete Disk;
+    // exit(0);
+    delete Disk;
     // delete bplustree;
 }
 
 double calculateAverage(disk *Disk, vector<void *> &items) {
     float avg = 0;
     int count = 0;
+    cout << "item size: " << items.size() << endl;
     for (int i=0; i<items.size(); i++) { //iterate through the vector to print the records
-        //record *r = Disk->getRecord((blockAddress *) items[i]);
-        //avg += r->averageRating;
-        //count += 1;
-        record *r = (record *)items[i];
+        blockAddress *address = (blockAddress *) items[i];
+        //record *r = (record*) address->addr;
+        //if (address->index == 1084647014) {
+        //    cout << "here" << endl;
+        //}
+        //Disk->printitems(address->index);
+        record *r = Disk->getRecord((blockAddress *) items[i]);
         avg += r->averageRating;
         count += 1;
+        //record *r = (record *)items[i];
+        //avg += r->averageRating;
+        //count += 1;
     }
     return avg / (count * 1.0);
 }
