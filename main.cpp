@@ -141,7 +141,7 @@ int main(int argc, char **argv) {
         }
     }
     //cout << avg2 / temp2.size() << endl;
-    //bplustree->removeT();
+    bplustree->removeT();
     
     std::cout << "Number of data blocks the process accesses: " << Disk->getTimesAccessed() << endl;
     std::cout << "Content of data blocks the process accesses: " << endl;
@@ -180,7 +180,6 @@ int main(int argc, char **argv) {
 double calculateAverage(disk *Disk, vector<void *> &items) {
     float avg = 0;
     int count = 0;
-    cout << "item size: " << items.size() << endl;
     for (int i=0; i<items.size(); i++) { //iterate through the vector to print the records
         record *r = Disk->getRecord((blockAddress *) items[i]);
         avg += r->averageRating;

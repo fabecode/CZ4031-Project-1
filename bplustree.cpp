@@ -372,10 +372,10 @@ std::vector<void *> BPlusTree::searchNumVotes(int lowerBoundKey, int upperBoundK
             t.push_back(cursor);
             for (int i = 0; i < cursor->numKeys; i++) {
                 if (isnan(cursor->keys[i]) || lowerBoundKey < cursor->keys[i]) {//Keep looping till data hit upper bound and stop
-                    for (int j = 0; j < cursor->numKeys; j++) {
-                        cout << cursor->keys[j] << " ";
-                    }
-                    cout << "\n";
+                    //for (int j = 0; j < cursor->numKeys; j++) {
+                    //    cout << cursor->keys[j] << " ";
+                    //}
+                    //cout << "\n";
 
                     cursor = (Node *) cursor->pointers[i];
                     //Add new feature to push data into vector for comparison against logic later
@@ -383,10 +383,10 @@ std::vector<void *> BPlusTree::searchNumVotes(int lowerBoundKey, int upperBoundK
                     break;
                 }
                 if (i == cursor->numKeys - 1) {
-                    for (int j = 0; j < cursor->numKeys; j++) {
-                        cout << cursor->keys[j] << " ";
-                    }
-                    cout << "\n";
+                    //for (int j = 0; j < cursor->numKeys; j++) {
+                    //    cout << cursor->keys[j] << " ";
+                    //}
+                    //cout << "\n";
 
                     cursor = (Node *) cursor->pointers[i + 1];
                     break;
@@ -402,9 +402,9 @@ std::vector<void *> BPlusTree::searchNumVotes(int lowerBoundKey, int upperBoundK
         int i = 0;
         int x = 0;
         float key = cursor->keys[0];
-        for (int j = 0; j < (int) cursor->numKeys; j++) {
-            cout << cursor->keys[j] << " ";
-        }
+        //for (int j = 0; j < (int) cursor->numKeys; j++) {
+        //    cout << cursor->keys[j] << " ";
+        //}
         cout << endl;
         // move cursor to correct lower bound
         for( i = 0; i < cursor->numKeys; i++){

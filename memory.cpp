@@ -92,7 +92,7 @@ int disk::getNumBlocks() {
 record *disk::getRecord(blockAddress *addr) {
     // everytime we retrieve a block, increment the access time
     disk::increaseTimesAccessed();
-    printitems(addr);
+    //printitems(addr);
     record *r = new record();
     memcpy(r, (char *)memory+addr->index*blocksize+addr->offset, sizeof(record));
     return r;

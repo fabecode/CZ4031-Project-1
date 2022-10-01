@@ -10,11 +10,6 @@ struct record {
     int numVotes;
 };
 
-struct block {
-    void *records;
-    int size;
-};
-
 // get records based on block index + offset from *records
 struct blockAddress {
     int index;
@@ -41,9 +36,6 @@ class disk {
 
         // prints all records in the database - remove later
         void printitems(blockAddress *baddr);
-
-        // simulates a block access
-        block *getBlock(int index);
 
         // fetch record
         record *getRecord(blockAddress *addr);
