@@ -8,7 +8,7 @@
 
 using namespace std;
 
-double calculateAverage(disk *Disk, vector<void *> &items, int overflowSize);
+double calculateAverage(disk *Disk, vector<void *> &items);
 
 int main(int argc, char **argv) {
     // reset buffer
@@ -42,15 +42,13 @@ int main(int argc, char **argv) {
         }
 
         infile >> str >> avgRate >> nVotes;
-        char *addr = Disk->insertRecord(str, avgRate, nVotes);
+        blockAddress *addr = Disk->insertRecord(str, avgRate, nVotes);
         bplustree->insert(addr, nVotes);
     }
-    //exit(0);
     // Report statistics
     //Size of database = size of relational data + index
-    //Disk->reportStatistics();
+    Disk->reportStatistics();
     //bplustree->display();
-
     /*
     =============================================================
     Experiment 2:
@@ -108,8 +106,7 @@ int main(int argc, char **argv) {
     }
     bplustree->removeT();
     std::cout << "Average of averageRating's of the records returned: " << endl;
-    cout << calculateAverage(Disk, temp, bplustree->overflowSize) << endl;
-
+    cout << calculateAverage(Disk, temp) << endl;
 
     /*
     =============================================================
@@ -143,7 +140,7 @@ int main(int argc, char **argv) {
     
     std::cout << "Content of data blocks the process accesses: " << endl;
     std::cout << "Average of averageRating's of the records that are returned: " << endl;
-    cout << calculateAverage(Disk, temp2, bplustree->overflowSize) << endl;
+    cout << calculateAverage(Disk, temp2 ) << endl;
  
 
     /*
@@ -171,48 +168,17 @@ int main(int argc, char **argv) {
     std::cout << "\n1st Child Node of updated B+ tree: " << endl;
     bplustree->displayNode((Node *)bplustree->getRoot()->pointers[0]);
 
-    // delete Disk;
+    delete Disk;
     // delete bplustree;
 }
 
-double calculateAverage(disk *Disk, vector<void *> &items, int overflowSize) {
+double calculateAverage(disk *Disk, vector<void *> &items) {
     float avg = 0;
     int count = 0;
     for (int i=0; i<items.size(); i++) { //iterate through the vector to print the records
-        record *r = (record *)items[i];
+        record *r = Disk->getRecord((blockAddress *) items[i]);
         avg += r->averageRating;
         count += 1;
-//         OverflowNode *overflow = (OverflowNode *)items[i];
-//         while (overflow != nullptr) {
-//             for (int j=0; j<overflow->numKeys; j++) {
-//                 blockAddress *bAddr = (blockAddress *) overflow->pointers[j];
-//                 block *dBlock = Disk->getBlock(bAddr->index);
-//
-//                 record R;
-//                 std::memcpy(&R, (char *) dBlock->records+bAddr->offset, sizeof(record));
-//                 //cout << R.tconst << " " << R.averageRating << " " << R.numVotes << endl;
-//                 avg += R.averageRating;
-//                 count += 1;
-//             }
-//             overflow = (OverflowNode *) overflow->pointers[overflowSize - 1];
-//         }
-//        for (int j=0; j<overflow->numKeys; j++) {
-//            if (j == overflow->numKeys - 1) {
-//                overflow = (OverflowNode *) overflow->pointers[overflowSize - 1];
-//                j = 0;
-//            }
-//            if (overflow == nullptr) {
-//                break;
-//            }
-//            blockAddress *bAddr = (blockAddress *) overflow->pointers[j];
-//            block *dBlock = Disk->getBlock(bAddr->index);
-//
-//            record R;
-//            std::memcpy(&R, (char *) dBlock->records+bAddr->offset, sizeof(record));
-//            cout << R.tconst << " " << R.averageRating << " " << R.numVotes << endl;
-//            avg += R.averageRating;
-//            count += 1;
-//        }
     }
     return avg / (count * 1.0);
 }

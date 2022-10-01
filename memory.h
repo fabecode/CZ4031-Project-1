@@ -41,6 +41,9 @@ class disk {
         // simulates a block access
         block *getBlock(int index);
 
+        // fetch record
+        record *getRecord(blockAddress *addr);
+
         // output the number of blocks used and the size of the database
         void reportStatistics();
 
@@ -48,10 +51,12 @@ class disk {
         int getNumBlocks();
 
         // insert new record into empty block
-        char *insertRecord(std::string tconst, float averageRating, int numVotes);
+        blockAddress *insertRecord(std::string tconst, float averageRating, int numVotes);
 
         // deletes a record based on the key
         void deleteRecord(std::string key);
+
+        void deleteRecord(blockAddress *bAddr);
 
         bool diskFull();
 

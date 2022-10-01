@@ -38,7 +38,6 @@ OverflowNode::OverflowNode(int maxKeys) {
 BPlusTree::BPlusTree(int blocksize) {
     // calculate number of pointers to store in overflow block
     overflowSize = (int) ((blocksize - sizeof(bool) - sizeof(int)) / sizeof(void *));
-    cout << overflowSize << endl;
     // calculate number of key-pointers pair to store in node
     int left = (int) (blocksize - sizeof(bool) - sizeof(int) - sizeof(void *));
     maxKeys = 0;
@@ -46,8 +45,6 @@ BPlusTree::BPlusTree(int blocksize) {
         maxKeys += 1;
         left -= (sizeof(float) + sizeof(void *));
     }
-    // maxKeys = 5;
-    //overflowSize = 5;
     // Initialize node
     root = nullptr;
     numNodes = 0;
@@ -61,7 +58,6 @@ void BPlusTree::insert(void *address, int key) {
         newNode->isLeaf = true;
         newNode->numKeys += 1;
         OverflowNode *newOverflow = new OverflowNode(overflowSize);
-        //Node *newOverflow = new Node(maxKeys);
         newOverflow->pointers[newOverflow->numKeys] = address;
         newOverflow->numKeys += 1;
         newOverflow->isLeaf = false;
@@ -93,9 +89,6 @@ void BPlusTree::insert(void *address, int key) {
         while (key > cursor->keys[i] && i < cursor->numKeys)i++;
         if (cursor->keys[i] == key) {
             OverflowNode *overflow = (OverflowNode *) cursor->pointers[i];
-            //while (overflow->pointers[overflowSize - 1] != nullptr) {
-            //    overflow = (OverflowNode *) overflow->pointers[overflowSize - 1];
-            //}
             if (overflow->numKeys + 1 < overflowSize) {
                 overflow->pointers[overflow->numKeys] = address;
                 overflow->numKeys += 1;
@@ -105,6 +98,7 @@ void BPlusTree::insert(void *address, int key) {
                 newOverflow->pointers[newOverflow->numKeys] = address;
                 newOverflow->numKeys += 1;
                 newOverflow->pointers[overflowSize - 1] = cursor->pointers[i];
+                // set new block as the first one in overflow, do not have to chase pointers
                 cursor->pointers[i]  = newOverflow;
             }
         } else {
@@ -112,6 +106,7 @@ void BPlusTree::insert(void *address, int key) {
             newOverflow->isLeaf = false;
             newOverflow->pointers[0] = address;
             newOverflow->numKeys += 1;
+            // if leaf has space
             if (cursor->numKeys + 1 < maxKeys) {
                 for (i=0; i<cursor->numKeys; i++) {
                     if (cursor->keys[i] > key) {
@@ -149,7 +144,8 @@ void BPlusTree::insert(void *address, int key) {
                 });
                 // split the node in the middle, the left having ceil(maxKeys+1) / 2, the right having floor(maxKeys+1)/2
                 cursor->numKeys = ceil((maxKeys + 1) / 2);
-                tNode->numKeys = (maxKeys + 1) - ceil((maxKeys + 1) / 2);
+                // tNode->numKeys = (maxKeys + 1) - ceil((maxKeys + 1) / 2);
+                tNode->numKeys = (maxKeys + 1) - cursor->numKeys;
                 int j=0;
                 for (i=0; i<tpointers.size(); i++) {
                     if (i < cursor->numKeys) {
@@ -160,13 +156,10 @@ void BPlusTree::insert(void *address, int key) {
                         tNode->keys[j] = tpointers[i].first;
                         j += 1;
                         cursor->pointers[i] = nullptr;
-                        cursor->keys[i] = 0;
+                        cursor->keys[i] = -1;
                     }
                 }
-                // set the correct numKeys value for the new left and right node
-                //cursor->numKeys = middle;
-                //tNode->numKeys = (maxKeys + 1) / 2;
-                // If we are at root (aka root == leaf), then we need to make a new parent root.
+
                 int internalKey = tNode->keys[0];
 
                 if (cursor == root) {
@@ -200,18 +193,18 @@ void BPlusTree::insert(void *address, int key) {
 void BPlusTree::insertInternal(int key, Node *cursor, Node *child) {
     if (cursor->numKeys < maxKeys) {
         // Iterate through the parent to see where to put in the lower bound key for the new child.
-        int i = 0;
+        int i = 0, j;
         while (key > cursor->keys[i] && i < cursor->numKeys)i++;
 
         // Now we have i, the index to insert the key in. Bubble swap all keys back to insert the new child's key.
         // We use numKeys as index since we are going to be inserting a new key.
-        for (int j = cursor->numKeys; j > i; j--) {
-            cursor->keys[j] = cursor->keys[j - 1];
+        for (j = cursor->numKeys; j > i; j--) {
+            cursor->keys[j] = cursor->keys[j-1];
         }
 
         // Shift all pointers one step right (right pointer of key points to lower bound of key).
-        for (int j = cursor->numKeys + 1; j > i + 1; j--) {
-            cursor->pointers[j] = cursor->pointers[j - 1];
+        for (j = cursor->numKeys+1; j>i+1; j--) {
+            cursor->pointers[j] = cursor->pointers[j-1];
         }
 
         // Add in new child's lower bound key and pointer to the parent.
@@ -220,46 +213,44 @@ void BPlusTree::insertInternal(int key, Node *cursor, Node *child) {
         cursor->numKeys++;
     } else {
         // If parent node doesn't have space, we need to recursively split parent node and insert more parent nodes.
-
-        // Make new internal node (split this parent node into two).
-        // Note: We DO NOT add a new key, just a new pointer!
         Node *newInternal = new Node(maxKeys);
         numNodes++;
+        int i, j;
 
         // Same logic as above, keep a temp list of keys and pointers to insert into the split nodes.
         // Now, we have one extra pointer to keep track of (new child's pointer).
-        int tempKeyList[maxKeys + 1];
-        Node *tempPointerList[maxKeys + 2];
+        int tempKeyList[maxKeys+1];
+        Node *tempPointerList[maxKeys+2];
 
-        // Copy all keys into a temp key list.
+        // Copy all keys/pointers into a temp key list.
         // Note all keys are filled so we just copy till maxKeys.
-        for (int i = 0; i < maxKeys; i++) {
-            tempKeyList[i] = cursor->keys[i];
+        for (i = 0; i <= maxKeys; i++) {
+            if (i < maxKeys) {
+                tempKeyList[i] = cursor->keys[i];
+            }
+            tempPointerList[i] = (Node *) cursor->pointers[i];
         }
 
         // Copy all pointers into a temp pointer list.
         // There is one more pointer than keys in the node so maxKeys + 1.
-        for (int i = 0; i < maxKeys + 1; i++) {
-            tempPointerList[i] = (Node *) cursor->pointers[i];
-        }
+//        for (i = 0; i < maxKeys + 1; i++) {
+//            tempPointerList[i] = (Node *) cursor->pointers[i];
+//        }
 
         // Find index to insert key in temp key list.
-        int i = 0;
+        i = 0;
         while (key > tempKeyList[i] && i < maxKeys)i++;
 
         // Swap all elements higher than index backwards to fit new key.
-        int j;
         for (j = maxKeys; j > i; j--) {
             tempKeyList[j] = tempKeyList[j - 1];
+        }
+        for (j=maxKeys+1; j>i+1; j--) {
+            tempPointerList[j] = tempPointerList[j-1];
         }
 
         // Insert new key into array in the correct spot (sorted).
         tempKeyList[i] = key;
-
-        for (j = maxKeys + 1; j > i + 1; j--) {
-            tempPointerList[j] = tempPointerList[j - 1];
-        }
-
         // Insert a pointer to the child to the right of its key.
         tempPointerList[i + 1] = child;
         newInternal->isLeaf = false; // Can't be leaf as it's a parent.
@@ -267,10 +258,10 @@ void BPlusTree::insertInternal(int key, Node *cursor, Node *child) {
         // Split the two new nodes into two. ⌊(n)/2⌋ keys for left.
         // For right, we drop the rightmost key since we only need to represent the pointer.
         cursor->numKeys = (maxKeys + 1) / 2;
-        newInternal->numKeys = maxKeys - (maxKeys + 1) / 2;
-
+        // newInternal->numKeys = maxKeys - (maxKeys + 1) / 2;
+        newInternal->numKeys = maxKeys - cursor->numKeys;
         // Reassign keys into cursor from tempkeyslist to account for new child node
-        for (int i = 0; i < cursor->numKeys; i++) {
+        for (i = 0; i < cursor->numKeys; i++) {
             cursor->keys[i] = tempKeyList[i];
         }
 
@@ -287,11 +278,11 @@ void BPlusTree::insertInternal(int key, Node *cursor, Node *child) {
         for (i = 0, j = cursor->numKeys + 1; i < newInternal->numKeys + 1; i++, j++) {
             newInternal->pointers[i] = tempPointerList[j];
         }
-        for (int i = cursor->numKeys; i < maxKeys; i++) {
+        for (i = cursor->numKeys; i < maxKeys; i++) {
             cursor->keys[i] = -1;
         }
 
-        for (int i = cursor->numKeys + 2; i < maxKeys + 1; i++) {
+        for (i = cursor->numKeys + 2; i < maxKeys + 1; i++) {
             cursor->pointers[i] = nullptr;
         }
 
@@ -382,7 +373,7 @@ std::vector<void *> BPlusTree::searchNumVotes(int lowerBoundKey, int upperBoundK
         // cursor will be in the correct leaf node - vector is a dynamic array that stores all the addresses
 
         std::vector<void *> records;
-        cout << "vector initialized" << endl;
+        //cout << "vector initialized" << endl;
         int i = 0;
         int x = 0;
         float key = cursor->keys[0];
@@ -406,8 +397,8 @@ std::vector<void *> BPlusTree::searchNumVotes(int lowerBoundKey, int upperBoundK
                 return records;
             }
         }
-        cout << "Key here: " << cursor->keys[i] << endl;
-        cout << "key:" << key << ",lowerBoundKey: " << lowerBoundKey << ", upperBoundKey:" << upperBoundKey << endl;
+        //cout << "Key here: " << cursor->keys[i] << endl;
+        //cout << "key:" << key << ",lowerBoundKey: " << lowerBoundKey << ", upperBoundKey:" << upperBoundKey << endl;
 
         /*start traversing through all the leaf till we meet upper bound*/
         x=i;
@@ -437,54 +428,6 @@ std::vector<void *> BPlusTree::searchNumVotes(int lowerBoundKey, int upperBoundK
         return records;
     }
 }
-
-//std::vector<void *> BPlusTree::searchNumVotes(int lowerBoundKey, int upperBoundKey) {
-//    //search logic
-//    if (root == nullptr) {
-//        // return empty vector
-//        return {};
-//        // throw std::logic_error("Tree is empty");
-//    }
-//    Node *cursor = root;
-//    //in the following while loop, cursor will travel to the leaf node possibly consisting the key
-//    while (!cursor->isLeaf) {
-//        t.push_back(cursor);
-//        for (int i = 0; i < cursor->numKeys; i++) {
-//            if (lowerBoundKey <= cursor->keys[i]) {//Keep looping till data hit upper bound and stop
-//                cursor = (Node *) cursor->pointers[i];
-//                //Add new feature to push data into vector for comparison against logic later
-//                break;
-//            }
-//            if (i == cursor->numKeys - 1) {
-//                cursor = (Node *) cursor->pointers[i + 1];
-//                break;
-//            }
-//        }
-//    }
-//
-//    //in the following for loop, we search for the key if it exists
-//    // cursor will be in the correct leaf node - vector is a dynamic array that stores all the addresses
-//    std::vector<void *> records;
-//    int i = 0;
-//    while (lowerBoundKey > cursor->keys[i] && i < cursor->numKeys)i++;
-//    for (; i<=cursor->numKeys; i++) {
-//        if (i == cursor->numKeys) {
-//            cursor = (Node *) cursor->pointers[maxKeys+1];
-//            i = 0;
-//        }
-//        if (cursor == nullptr) {
-//            break;
-//        }
-//        if (records.size() == 44) {
-//            cout << "here" << endl;
-//        }
-//        if (cursor->keys[i] > upperBoundKey) {
-//            break;
-//        }
-//        records.push_back(cursor->pointers[i]);
-//    }
-//    return records;
-//}
 
 // Display a node and its contents in the B+ Tree.
 void BPlusTree::displayNode(Node *node) {
@@ -626,6 +569,11 @@ void BPlusTree::remove(int key) {
 
         //Found the key, delete overflow nodes
         OverflowNode *curr = (OverflowNode*) cursor->pointers[pos];
+        //while (curr) {
+        //    OverflowNode *next = (OverflowNode*) curr->pointers[overflowSize - 1];
+        //    delete curr;
+        //    curr = next;
+        //}
         free(curr);
 
         //start shifting keys forward to replace it

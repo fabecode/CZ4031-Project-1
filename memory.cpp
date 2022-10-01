@@ -25,7 +25,7 @@ disk::~disk() {
 }
 
 // insert a new tuple into disk
-char *disk::insertRecord(std::string tconst, float averageRating, int numVotes) {
+blockAddress *disk::insertRecord(std::string tconst, float averageRating, int numVotes) {
     record tRecord = record();
     tRecord.averageRating = averageRating;
     tRecord.numVotes = numVotes;
@@ -45,24 +45,27 @@ char *disk::insertRecord(std::string tconst, float averageRating, int numVotes) 
         // count the bytes used
         tBlock->size += 19;
         disk::size += 19;
-        blockAddress *bAddr = new blockAddress{i.first, offset};
-        return (char *)i.second;
+        blockAddress *bAddr = new blockAddress();
+        bAddr->index = i.first;
+        bAddr->offset = offset;
+        // return (char *)i.second;
+        return bAddr;
     }
 
     // try inserting to the last block if there is space in the block and on the disk
     if (!disk::blocks.empty() && disk::blocks.back()->size + 19 < disk::blocksize) {
         block *tblock = disk::blocks.back();
         int offset = getOffset(tblock->size)*sizeof(record);
-        //int index = disk::numBlocks - 1;
-        //blockAddress *bAddr = new blockAddress();
-        //bAddr->offset = offset;
-        //bAddr->index = index;
+        int index = disk::numBlocks - 1;
+        blockAddress *bAddr = new blockAddress();
+        bAddr->offset = offset;
+        bAddr->index = index;
         char *addr = (char *)tblock->records+offset;
         std::memcpy(addr, &tRecord, sizeof(record));
         tblock->size += 19;
         // count the bytes used
         disk::size += 19;
-        return addr;
+        return bAddr;
     } else {
         // No previously reclaimed space, and we cannot insert a new block
         if (disk::freed.empty() && diskFull()) {
@@ -78,10 +81,10 @@ char *disk::insertRecord(std::string tconst, float averageRating, int numVotes) 
         // set all to null
         memset((char *)tBlock->records, '\0',disk::blocksize);
         int offset = getOffset(tBlock->size)*sizeof(record);
-        //int index = disk::numBlocks;
-        //blockAddress *bAddr = new blockAddress();
-        //bAddr->offset = offset;
-        //bAddr->index = index;
+        int index = disk::numBlocks;
+        blockAddress *bAddr = new blockAddress();
+        bAddr->offset = offset;
+        bAddr->index = index;
         char *addr = (char *)tBlock->records+offset;
         std::memcpy(addr, &tRecord, sizeof(record));
         tBlock->size += 19;
@@ -90,7 +93,7 @@ char *disk::insertRecord(std::string tconst, float averageRating, int numVotes) 
         disk::blocks.push_back(tBlock);
         disk::size += tBlock->size;
         disk::numBlocks += 1;
-        return addr;
+        return bAddr;
     }
 }
 
@@ -144,6 +147,27 @@ void disk::deleteRecord(std::string key) {
     }
 }
 
+void disk::deleteRecord(blockAddress *bAddr) {
+    // disk::increaseTimesAccessed();
+    block *tBlock = disk::blocks[bAddr->index];
+    freed.push_back(make_pair(bAddr->index, (char *)tBlock->records+bAddr->offset));
+    // erase the old record
+    memset((char *)tBlock->records+bAddr->offset, '\0',sizeof(record));
+    tBlock->size -= 19;
+    disk::size -= 19;
+    if (tBlock->size - sizeof(int) == 0) {
+        // since the block is being removed, we no longer need to track if the block has space for a new record
+        disk::freed.erase(remove_if(disk::freed.begin(), disk::freed.end(), [&](std::pair<int, char*> p) {
+            return p.first == bAddr->index;
+        }), disk::freed.end());
+        // remove the block
+        delete tBlock;
+        disk::blocks.erase(disk::blocks.begin() + bAddr->index);
+        // update disk
+        disk::numBlocks -= 1;
+    }
+}
+
 // sanity check
 void disk::printitems() {
     char testBlock[sizeof(record)];
@@ -186,3 +210,10 @@ bool disk::diskFull() {
     return (disk::size + disk::blocksize) > disk::capacity;
 }
 
+record *disk::getRecord(blockAddress *addr) {
+    // everytime we retrieve a block, increment the access time
+    disk::increaseTimesAccessed();
+    record *r = new record();
+    memcpy(r, (char*)disk::blocks[addr->index]->records+addr->offset, sizeof(record));
+    return r;
+}
