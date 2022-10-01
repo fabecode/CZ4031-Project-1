@@ -42,6 +42,8 @@ class disk {
 
         void *getBlock(int index);
 
+        void printBlock(void *block, int index);
+
         // output the number of blocks used and the size of the database
         void reportStatistics();
 
@@ -69,6 +71,10 @@ class disk {
 
         float getSizeMB() {
             return ((disk::size*1.0) / 1000000);
+        }
+
+        int getSize() {
+            return disk::size;
         }
 };
 

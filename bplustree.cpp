@@ -50,7 +50,7 @@ BPlusTree::BPlusTree(int blocksize) {
     numNodes = 0;
 }
 
-// Insert a record into the B+ Tree index. Key: Record's avgRating, Value: {blockAddress, offset}.
+// Insert a record into the B+ Tree index. Key: Record's numOfVotes, Value: {blockAddress, offset}.
 void BPlusTree::insert(void *address, int key) {
     if (root == nullptr) {
         Node *newNode = new Node(maxKeys);
@@ -82,7 +82,6 @@ void BPlusTree::insert(void *address, int key) {
                 }
             }
         }
-        // checks if key is already in leaf node
         // check if there is duplicates in the current leaf
         i = 0;
         // While we haven't reached the last key and the key we want to insert is larger than current key, keep moving forward.
@@ -120,7 +119,7 @@ void BPlusTree::insert(void *address, int key) {
                         break;
                     }
                 }
-                // while (cursor->keys[i] > key && i<cursor->numKeys) i++;
+                // while (cursor->keys[i] < key && i<cursor->numKeys) i++;
                 // move items back
                 for (int j=cursor->numKeys; j>i; j--) {
                     cursor->pointers[j] = cursor->pointers[j-1];
@@ -156,7 +155,6 @@ void BPlusTree::insert(void *address, int key) {
                 });
                 // split the node in the middle, the left having ceil(maxKeys+1) / 2, the right having floor(maxKeys+1)/2
                 cursor->numKeys = (maxKeys + 1) / 2;
-
                 // tNode->numKeys = (maxKeys + 1) - ceil((maxKeys + 1) / 2);
                 tNode->numKeys = (maxKeys + 1) - cursor->numKeys;
                 int j=0;

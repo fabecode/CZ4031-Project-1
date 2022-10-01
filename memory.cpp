@@ -93,6 +93,22 @@ void disk::printitems(blockAddress *baddr) {
     }
 }
 
+void disk::printBlock(void *block, int index) {
+    char testBlock[sizeof(record)];
+    memset(testBlock, '\0', sizeof(record));
+    int items = disk::blocksize / 19;
+    cout << "------------------Printing contents of block "<< index <<"-------------------------" << endl;
+    for (int j=0; j<items; j++) {
+        record tt;
+
+        std::memcpy(&tt, (char *)block+j*sizeof(record), sizeof(record));
+        if (memcmp(&tt, testBlock, sizeof(record)) != 0){
+            cout << tt.tconst << " " << tt.averageRating << " " << tt.numVotes << endl;
+        }
+    }
+    cout << "----------------------------------------------------------------------------" << endl;
+}
+
 // output disk statistics
 void disk::reportStatistics() {
     std::cout << "Number of Blocks used: " << disk::numBlocks << "." << std::endl;
@@ -117,7 +133,7 @@ bool disk::allocateBlock() {
 record *disk::getRecord(blockAddress *addr) {
     // everytime we retrieve a block, increment the access time
     void *block = getBlock(addr->index);
-    //printitems(addr);
+    printBlock(block, addr->index);
     record *r = new record();
     memcpy(r, (char *)block+addr->offset, sizeof(record));
     return r;
