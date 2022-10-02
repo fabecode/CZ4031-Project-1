@@ -33,7 +33,7 @@ blockAddress *disk::insertRecord(std::string tconst, float averageRating, int nu
     blockAddress *bAddr = new blockAddress();
 
     // disk is full, final block cant accept another record, and there is no entry in freed.
-    if (disk::numBlocks == disk::totalBlocks && freed.empty()) {
+    if (disk::numBlocks == disk::totalBlocks && freed.empty() && (disk::currentIndex == disk::totalBlocks - 1 && toffset == disk::blocksize)) {
         return nullptr;
     }
 

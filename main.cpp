@@ -51,7 +51,7 @@ int main(int argc, char **argv) {
     // Report statistics
     //Size of database = size of relational data + index
     Disk->reportStatistics();
-    bplustree->display();
+    // bplustree->display();
     cout << "Size of database + index = " << (Disk->getSize() + bplustree->getNumNodes()*blocksize*1.0) / 1000000 << "MB."<< endl;
 
     /*
