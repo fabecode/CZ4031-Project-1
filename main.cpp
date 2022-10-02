@@ -95,7 +95,7 @@ void conductExperiments(int blockSize) {
 
     std::cout << "\n==================Experiment 3==================" << endl;
     std::cout << "Retrieve movies with numVotes equal to 500..." << endl;
-    vector<void *> temp = bplustree->searchNumVotes(500, 500);
+    vector<void *> temp = bplustree->searchRange(500, 500);
 
     // number of index nodes accessed is the height of bplus tree - 1
     std::cout << "Number of index nodes the process accesses: " << bplustree->getHeight(bplustree->getRoot()) - 1 << endl;
@@ -126,7 +126,7 @@ void conductExperiments(int blockSize) {
     
     std::cout << "\n==================Experiment 4==================" << endl;
     std::cout << "Retrieve movies with numVotes between 30,000 to 40,000..." << endl;
-    vector<void *> temp2 = bplustree->searchNumVotes(30000, 40000);
+    vector<void *> temp2 = bplustree->searchRange(30000, 40000);
 
     std::cout << "Number of index nodes the process accesses: " << bplustree->getHeight(bplustree->getRoot()) - 1<< endl;
     std::cout << "Content of index nodes the process accesses (1st 5 nodes): " << endl;
