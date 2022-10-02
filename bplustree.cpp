@@ -8,6 +8,8 @@
 #include <cmath>
 #include <algorithm>
 
+class record;
+ofstream out = ofstream("output2.txt");
 using namespace std;
 
 Node::Node(int maxKeys) {
@@ -39,29 +41,30 @@ BPlusTree::BPlusTree(int blocksize) {
     // calculate number of key-pointers pair to store in node
     int left = (int) (blocksize - sizeof(bool) - sizeof(int) - sizeof(void *));
     maxKeys = 0;
-    while (sizeof(float) + sizeof(void *) <= left) {
+    while (sizeof(int) + sizeof(void *) <= left) {
         maxKeys += 1;
-        left -= (sizeof(float) + sizeof(void *));
+        left -= (sizeof(int) + sizeof(void *));
     }
-    // maxKeys = 5;
     // Initialize node
     root = nullptr;
     numNodes = 0;
 }
 
-// Insert a record into the B+ Tree index. Key: Record's avgRating, Value: {blockAddress, offset}.
+// Insert a record into the B+ Tree index. Key: Record's numOfVotes, Value: {blockAddress, offset}.
 void BPlusTree::insert(void *address, int key) {
     if (root == nullptr) {
         Node *newNode = new Node(maxKeys);
         newNode->keys[0] = key;
         newNode->isLeaf = true;
+        newNode->numKeys += 1;
         OverflowNode *newOverflow = new OverflowNode(overflowSize);
         newOverflow->pointers[newOverflow->numKeys] = address;
+        newOverflow->numKeys += 1;
         newOverflow->isLeaf = false;
         newNode->pointers[0] = newOverflow;
         root = newNode;
     } else {
-        Node *cursor = BPlusTree::root;
+        Node *cursor = root;
         Node *parent;
         int i;
         // finding the correct leaf node to insert item
@@ -69,48 +72,54 @@ void BPlusTree::insert(void *address, int key) {
             parent = cursor;
             for (i=0; i<cursor->numKeys; i++) {
                 if (cursor->keys[i] > key) {
-                    cursor = (Node *) parent->pointers[i];
+                    cursor = (Node *) cursor->pointers[i];
                     break;
                 }
 
                 if (i == cursor->numKeys - 1) {
-                    cursor = (Node *) parent->pointers[i+1];
+                    cursor = (Node *) cursor->pointers[i+1];
                     break;
                 }
             }
         }
-
-        // checks if key is already in leaf node
         // check if there is duplicates in the current leaf
         i = 0;
         // While we haven't reached the last key and the key we want to insert is larger than current key, keep moving forward.
         while (key > cursor->keys[i] && i < cursor->numKeys)i++;
         if (cursor->keys[i] == key) {
             OverflowNode *overflow = (OverflowNode *) cursor->pointers[i];
-            //while (overflow->pointers[overflowSize - 1] != nullptr) {
-            //    overflow = (OverflowNode *) overflow->pointers[overflowSize - 1];
-            //}
-            if (overflow->numKeys < overflowSize) {
+            OverflowNode *next;
+            while (overflow) {
+                next = overflow;
+                overflow = (OverflowNode *) overflow->pointers[overflowSize-1];
+            }
+            overflow = next;
+            if (overflow->numKeys + 1 < overflowSize) {
                 overflow->pointers[overflow->numKeys] = address;
                 overflow->numKeys += 1;
             } else {
                 OverflowNode *newOverflow = new OverflowNode(overflowSize);
-                // overflow->pointers[overflowSize - 1] = newOverflow;
+                overflow->pointers[overflowSize - 1] = newOverflow;
                 newOverflow->pointers[newOverflow->numKeys] = address;
                 newOverflow->numKeys += 1;
-                newOverflow->pointers[overflowSize - 1] = cursor->pointers[i];
-                cursor->pointers[i]  = newOverflow;
+                //overflow->pointers[overflowSize-1] = newOverflow;
+                //newOverflow->pointers[overflowSize - 1] = cursor->pointers[i];
+                // set new block as the first one in overflow, do not have to chase pointers
+                //cursor->pointers[i]  = newOverflow;
             }
         } else {
             OverflowNode *newOverflow = new OverflowNode(overflowSize);
             newOverflow->isLeaf = false;
             newOverflow->pointers[0] = address;
-            if (cursor->numKeys < maxKeys) {
+            newOverflow->numKeys += 1;
+            // if leaf has space
+            if (cursor->numKeys + 1 < maxKeys) {
                 for (i=0; i<cursor->numKeys; i++) {
                     if (cursor->keys[i] > key) {
                         break;
                     }
                 }
+                // while (cursor->keys[i] < key && i<cursor->numKeys) i++;
                 // move items back
                 for (int j=cursor->numKeys; j>i; j--) {
                     cursor->pointers[j] = cursor->pointers[j-1];
@@ -125,10 +134,11 @@ void BPlusTree::insert(void *address, int key) {
                 BPlusTree::numNodes += 1;
                 Node *tNode = new Node(maxKeys);
                 tNode->isLeaf = true;
-                //tNode->pointers[maxKeys+1] = cursor->pointers[maxKeys+1];
-                //cursor->pointers[maxKeys+1] = tNode;
-                tNode->pointers[maxKeys] = cursor->pointers[maxKeys];
+                // copy pointer to point to correct leaf node
+                Node *next = (Node *)cursor->pointers[maxKeys];
                 cursor->pointers[maxKeys] = tNode;
+                tNode->pointers[maxKeys] = next;
+
                 // create a temp vector to hold the maxKeys + 1 items
                 std::vector<pair<int, void*>> tpointers;
                 // push the new item in
@@ -136,16 +146,19 @@ void BPlusTree::insert(void *address, int key) {
                 // move all the items in the node in
                 for (i=0; i<cursor->numKeys; i++) {
                     tpointers.push_back(make_pair(cursor->keys[i], cursor->pointers[i]));
+                    cursor->pointers[i] = nullptr;
+                    cursor->keys[i] = -1;
                 }
                 // sort the temporary vector so that all the items are lined up correctly
                 sort(tpointers.begin(), tpointers.end(), [&](pair<int, void*> p1, pair<int, void*> p2) {
                     return p1.first < p2.first;
                 });
                 // split the node in the middle, the left having ceil(maxKeys+1) / 2, the right having floor(maxKeys+1)/2
-                cursor->numKeys = ceil((maxKeys + 1) / 2);
-                tNode->numKeys = (maxKeys + 1) - ceil((maxKeys + 1) / 2);
+                cursor->numKeys = (maxKeys + 1) / 2;
+                // tNode->numKeys = (maxKeys + 1) - ceil((maxKeys + 1) / 2);
+                tNode->numKeys = (maxKeys + 1) - cursor->numKeys;
                 int j=0;
-                for (i=0; i<tpointers.size(); i++) {
+                for (i=0; i<=maxKeys; i++) {
                     if (i < cursor->numKeys) {
                         cursor->pointers[i] = tpointers[i].second;
                         cursor->keys[i] = tpointers[i].first;
@@ -153,22 +166,15 @@ void BPlusTree::insert(void *address, int key) {
                         tNode->pointers[j] = tpointers[i].second;
                         tNode->keys[j] = tpointers[i].first;
                         j += 1;
-                        cursor->pointers[i] = nullptr;
-                        cursor->keys[i] = 0;
                     }
                 }
-                // set the correct numKeys value for the new left and right node
-                //cursor->numKeys = middle;
-                //tNode->numKeys = (maxKeys + 1) / 2;
-                // If we are at root (aka root == leaf), then we need to make a new parent root.
-                int internalKey = tNode->keys[0];
 
                 if (cursor == root) {
                     // created new root, update numNodes
                     BPlusTree::numNodes += 1;
                     Node *newRoot = new Node(maxKeys);
                     // We need to set the new root's key to be the left bound of the right child.
-                    newRoot->keys[0] = internalKey;
+                    newRoot->keys[0] = tNode->keys[0];
 
                     // Point the new root's children as the existing node and the new node.
                     newRoot->pointers[0] = cursor;
@@ -181,7 +187,7 @@ void BPlusTree::insert(void *address, int key) {
                     // Update the root node
                     root = newRoot;
                 } else { // If we are not at the root, we need to insert a new parent in the middle levels of the tree.
-                    insertInternal(internalKey, parent, tNode);
+                    insertInternal(tNode->keys[0], parent, tNode);
                 }
             }
         }
@@ -192,7 +198,6 @@ void BPlusTree::insert(void *address, int key) {
 // Takes the lower bound of the right child, and the main memory address of the parent and the new child,
 // as well as disk address of parent and new child.
 void BPlusTree::insertInternal(int key, Node *cursor, Node *child) {
-
     if (cursor->numKeys < maxKeys) {
         // t
         // Iterate through the parent to see where to put in the lower bound key for the new child.
@@ -365,10 +370,10 @@ std::vector<void *> BPlusTree::searchNumVotes(int lowerBoundKey, int upperBoundK
             t.push_back(cursor);
             for (int i = 0; i < cursor->numKeys; i++) {
                 if (isnan(cursor->keys[i]) || lowerBoundKey < cursor->keys[i]) {//Keep looping till data hit upper bound and stop
-                    for (int j = 0; j < cursor->numKeys; j++) {
-                        cout << cursor->keys[j] << " ";
-                    }
-                    cout << "\n";
+                    //for (int j = 0; j < cursor->numKeys; j++) {
+                    //    cout << cursor->keys[j] << " ";
+                    //}
+                    //cout << "\n";
 
                     cursor = (Node *) cursor->pointers[i];
                     //Add new feature to push data into vector for comparison against logic later
@@ -376,10 +381,10 @@ std::vector<void *> BPlusTree::searchNumVotes(int lowerBoundKey, int upperBoundK
                     break;
                 }
                 if (i == cursor->numKeys - 1) {
-                    for (int j = 0; j < cursor->numKeys; j++) {
-                        cout << cursor->keys[j] << " ";
-                    }
-                    cout << "\n";
+                    //for (int j = 0; j < cursor->numKeys; j++) {
+                    //    cout << cursor->keys[j] << " ";
+                    //}
+                    //cout << "\n";
 
                     cursor = (Node *) cursor->pointers[i + 1];
                     break;
@@ -391,13 +396,13 @@ std::vector<void *> BPlusTree::searchNumVotes(int lowerBoundKey, int upperBoundK
         // cursor will be in the correct leaf node - vector is a dynamic array that stores all the addresses
 
         std::vector<void *> records;
-        cout << "vector initialized" << endl;
+        //cout << "vector initialized" << endl;
         int i = 0;
         int x = 0;
         float key = cursor->keys[0];
-        for (int j = 0; j < (int) cursor->numKeys; j++) {
-            cout << cursor->keys[j] << " ";
-        }
+        //for (int j = 0; j < (int) cursor->numKeys; j++) {
+        //    cout << cursor->keys[j] << " ";
+        //}
         cout << endl;
         // move cursor to correct lower bound
         for( i = 0; i < cursor->numKeys; i++){
@@ -415,17 +420,21 @@ std::vector<void *> BPlusTree::searchNumVotes(int lowerBoundKey, int upperBoundK
                 return records;
             }
         }
-        cout << "Key here: " << cursor->keys[i] << endl;
-        cout << "key:" << key << ",lowerBoundKey: " << lowerBoundKey << ", upperBoundKey:" << upperBoundKey << endl;
+        //cout << "Key here: " << cursor->keys[i] << endl;
+        //cout << "key:" << key << ",lowerBoundKey: " << lowerBoundKey << ", upperBoundKey:" << upperBoundKey << endl;
 
         /*start traversing through all the leaf till we meet upper bound*/
         x=i;
         while( cursor->keys[x]<=upperBoundKey){
             //Handle overflownode contents
             OverflowNode *ofnode = (OverflowNode *)cursor->pointers[x];
-            for(int j = 0; j < ofnode->numKeys ; j++){
-                records.push_back(ofnode->pointers[j]);
+            while (ofnode) {
+                for(int j = 0; j < ofnode->numKeys ; j++){
+                    records.push_back(ofnode->pointers[j]);
+                }
+                ofnode = (OverflowNode *) ofnode->pointers[overflowSize-1];
             }
+
 
             //key = cursor->keys[x];
             x++;
@@ -442,54 +451,6 @@ std::vector<void *> BPlusTree::searchNumVotes(int lowerBoundKey, int upperBoundK
         return records;
     }
 }
-
-//std::vector<void *> BPlusTree::searchNumVotes(int lowerBoundKey, int upperBoundKey) {
-//    //search logic
-//    if (root == nullptr) {
-//        // return empty vector
-//        return {};
-//        // throw std::logic_error("Tree is empty");
-//    }
-//    Node *cursor = root;
-//    //in the following while loop, cursor will travel to the leaf node possibly consisting the key
-//    while (!cursor->isLeaf) {
-//        t.push_back(cursor);
-//        for (int i = 0; i < cursor->numKeys; i++) {
-//            if (lowerBoundKey <= cursor->keys[i]) {//Keep looping till data hit upper bound and stop
-//                cursor = (Node *) cursor->pointers[i];
-//                //Add new feature to push data into vector for comparison against logic later
-//                break;
-//            }
-//            if (i == cursor->numKeys - 1) {
-//                cursor = (Node *) cursor->pointers[i + 1];
-//                break;
-//            }
-//        }
-//    }
-//
-//    //in the following for loop, we search for the key if it exists
-//    // cursor will be in the correct leaf node - vector is a dynamic array that stores all the addresses
-//    std::vector<void *> records;
-//    int i = 0;
-//    while (lowerBoundKey > cursor->keys[i] && i < cursor->numKeys)i++;
-//    for (; i<=cursor->numKeys; i++) {
-//        if (i == cursor->numKeys) {
-//            cursor = (Node *) cursor->pointers[maxKeys+1];
-//            i = 0;
-//        }
-//        if (cursor == nullptr) {
-//            break;
-//        }
-//        if (records.size() == 44) {
-//            cout << "here" << endl;
-//        }
-//        if (cursor->keys[i] > upperBoundKey) {
-//            break;
-//        }
-//        records.push_back(cursor->pointers[i]);
-//    }
-//    return records;
-//}
 
 // Display a node and its contents in the B+ Tree.
 void BPlusTree::displayNode(Node *node) {
@@ -585,12 +546,12 @@ void BPlusTree::display() {
     for (int i = s.size() - 1; i > 0; i--) {
         int spaceCount = (s[0].size() - s[i].size()) / 2;
         for (spaceCount; spaceCount > 0; spaceCount--) {
-            cout << " ";
+            out << " ";
         }
-        cout << s[i] << "\n";
+        out << s[i] << "\n";
 
     }
-    cout << s[0];
+    out << s[0];
 
 }
 
@@ -631,6 +592,11 @@ void BPlusTree::remove(int key) {
 
         //Found the key, delete overflow nodes
         OverflowNode *curr = (OverflowNode*) cursor->pointers[pos];
+        //while (curr) {
+        //    OverflowNode *next = (OverflowNode*) curr->pointers[overflowSize - 1];
+        //    delete curr;
+        //    curr = next;
+        //}
         free(curr);
 
         //start shifting keys forward to replace it

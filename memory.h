@@ -10,11 +10,6 @@ struct record {
     int numVotes;
 };
 
-struct block {
-    void *records;
-    int size;
-};
-
 // get records based on block index + offset from *records
 struct blockAddress {
     int index;
@@ -23,23 +18,30 @@ struct blockAddress {
 
 class disk {
     private:
-        std::vector<block *> blocks;
-        std::vector<std::pair<int, char*>> freed;
+        void *memory;
+        std::vector<std::pair<int, int>> freed;
+        int currentIndex;
         int size;
         int blocksize;
         int numBlocks;
         int capacity;
         int timesAccessed;
+        int totalBlocks;
+        int toffset;
     public:
         disk(int capacity, int blocksize);
 
         ~disk();
 
         // prints all records in the database - remove later
-        void printitems();
+        void printitems(blockAddress *baddr);
 
-        // simulates a block access
-        block *getBlock(int index);
+        // fetch record
+        record *getRecord(blockAddress *addr, bool printFlag);
+
+        void *getBlock(int index);
+
+        void printBlock(void *block, int index);
 
         // output the number of blocks used and the size of the database
         void reportStatistics();
@@ -50,10 +52,9 @@ class disk {
         // insert new record into empty block
         blockAddress *insertRecord(std::string tconst, float averageRating, int numVotes);
 
-        // deletes a record based on the key
-        void deleteRecord(std::string key);
+        void deleteRecord(blockAddress *bAddr);
 
-        bool diskFull();
+        bool allocateBlock();
 
         int getTimesAccessed() {
             return disk::timesAccessed;
@@ -69,6 +70,10 @@ class disk {
 
         float getSizeMB() {
             return ((disk::size*1.0) / 1000000);
+        }
+
+        int getSize() {
+            return disk::size;
         }
 };
 
