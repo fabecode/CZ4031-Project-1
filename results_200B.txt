@@ -7,8 +7,8 @@ Size of database + index = 20.7643MB.
 Parameter n of the B+ tree    : 15
 Number of nodes of the B+ tree: 2141
 Height of the B+ tree         : 4
-Root Node: |1141 | 2161 | 3579 | 4483 | 5528 | 7316 | 10030 | 12217 | 15423 | 19421 | 24834 | 39388 | 62149 | 127391 | 
-
+Root Node of the B+ tree: 
+|1141 | 2161 | 3579 | 4483 | 5528 | 7316 | 10030 | 12217 | 15423 | 19421 | 24834 | 39388 | 62149 | 127391 | 
 
 1st Child Node: 
 |89 | 222 | 311 | 395 | 487 | 557 | 680 | 771 | 870 | 1017 | 
@@ -21,6 +21,7 @@ Content of index nodes (1st 5 nodes):
 |1141 | 2161 | 3579 | 4483 | 5528 | 7316 | 10030 | 12217 | 15423 | 19421 | 24834 | 39388 | 62149 | 127391 | 
 |89 | 222 | 311 | 395 | 487 | 557 | 680 | 771 | 870 | 1017 | 
 |494 | 501 | 508 | 515 | 523 | 532 | 544 | 
+
 Content of data blocks the process accesses (1st 5 blocks): 
 ------------------Printing contents of block 359--------------------------
 tt0013631 6.6 12
@@ -93,6 +94,7 @@ Content of index nodes the process accesses (1st 5 nodes):
 |1141 | 2161 | 3579 | 4483 | 5528 | 7316 | 10030 | 12217 | 15423 | 19421 | 24834 | 39388 | 62149 | 127391 | 
 |25580 | 26115 | 27189 | 28117 | 28962 | 30254 | 31260 | 32188 | 33182 | 34534 | 35411 | 36388 | 37346 | 
 |29067 | 29167 | 29274 | 29317 | 29453 | 29587 | 29671 | 29792 | 29880 | 29962 | 30034 | 30136 | 30195 | 
+
 Content of data blocks the process accesses (1st 5 blocks): 
 ------------------Printing contents of block 3296--------------------------
 tt0054158 5.2 9
@@ -162,8 +164,8 @@ Delete movies with numVotes equal to 1000...
 The number of times that a node is deleted(or two nodes are merged): 0
 Number of nodes of updated B+ tree: 2141
 Height of updated B+ tree         : 4
-Root Node of updated B+ tree: |1141 | 2161 | 3579 | 4483 | 5528 | 7316 | 10030 | 12217 | 15423 | 19421 | 24834 | 39388 | 62149 | 127391 | 
-
+Root Node of updated B+ tree:
+ |1141 | 2161 | 3579 | 4483 | 5528 | 7316 | 10030 | 12217 | 15423 | 19421 | 24834 | 39388 | 62149 | 127391 | 
 
 1st Child Node of updated B+ tree: 
 |89 | 222 | 311 | 395 | 487 | 557 | 680 | 771 | 870 | 1017 | 
