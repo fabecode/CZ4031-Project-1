@@ -8,14 +8,13 @@
 #include <cmath>
 #include <algorithm>
 
-class record;
-ofstream out = ofstream("output2.txt");
 using namespace std;
 
 Node::Node(int maxKeys) {
     // Initialize array with key and ptr
     keys = new int[maxKeys];
     pointers = new void *[maxKeys + 1];
+    // default nullptr and -1 key
     for (int i=0; i<maxKeys; i++) {
         pointers[i] = nullptr;
         keys[i] = -1;
@@ -27,7 +26,7 @@ Node::Node(int maxKeys) {
 
 OverflowNode::OverflowNode(int maxKeys) {
     pointers = new void *[maxKeys];
-
+    // default to nullptr
     for (int i=0; i<maxKeys; i++) {
         pointers[i] = nullptr;
     }
@@ -52,6 +51,7 @@ BPlusTree::BPlusTree(int blocksize) {
 
 // Insert a record into the B+ Tree. Key: Record's numOfVotes, Value: {blockAddress, offset}.
 void BPlusTree::insert(void *address, int key) {
+    // empty tree, create new root
     if (root == nullptr) {
         Node *newNode = new Node(maxKeys);
         newNode->keys[0] = key;
@@ -89,6 +89,7 @@ void BPlusTree::insert(void *address, int key) {
         if (cursor->keys[i] == key) {
             OverflowNode *overflow = (OverflowNode *) cursor->pointers[i];
             OverflowNode *next;
+            // follow linked list
             while (overflow) {
                 next = overflow;
                 overflow = (OverflowNode *) overflow->pointers[overflowSize-1];
@@ -150,11 +151,12 @@ void BPlusTree::insert(void *address, int key) {
                 sort(tpointers.begin(), tpointers.end(), [&](pair<int, void*> p1, pair<int, void*> p2) {
                     return p1.first < p2.first;
                 });
-                // split the node in the middle, the left having ceil(maxKeys+1) / 2, the right having floor(maxKeys+1)/2
+
+                // split the node in the middle
                 cursor->numKeys = (maxKeys + 1) / 2;
-                // tNode->numKeys = (maxKeys + 1) - ceil((maxKeys + 1) / 2);
                 tNode->numKeys = (maxKeys + 1) - cursor->numKeys;
                 int j=0;
+                // assign them all
                 for (i=0; i<=maxKeys; i++) {
                     if (i < cursor->numKeys) {
                         cursor->pointers[i] = tpointers[i].second;
@@ -192,7 +194,7 @@ void BPlusTree::insert(void *address, int key) {
     }
 }
 
-// Update parent node ppointed and add internal node if needed.
+// Update parent node pointed and add internal node if needed.
 // Takes in pointer of parent node, child node and the key to insert
 void BPlusTree::insertInternalNode(int key, Node *cursor, Node *child) {
     if (cursor->numKeys < maxKeys) {
@@ -485,12 +487,12 @@ void BPlusTree::display() {
     for (int i = s.size() - 1; i > 0; i--) {
         int spaceCount = (s[0].size() - s[i].size()) / 2;
         for (spaceCount; spaceCount > 0; spaceCount--) {
-            out << " ";
+            cout << " ";
         }
-        out << s[i] << "\n";
+        cout << s[i] << "\n";
 
     }
-    out << s[0];
+    cout << s[0];
 
 }
 

@@ -1,8 +1,6 @@
 #include <iostream>
 #include <vector>
 #include <string>
-#include <fstream>
-#include <cstring>
 #include "memory.h"
 #include "bplustree.h"
 
