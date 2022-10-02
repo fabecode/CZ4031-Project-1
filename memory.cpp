@@ -144,10 +144,12 @@ bool disk::allocateBlock() {
     return true;
 }
 
-record *disk::getRecord(blockAddress *addr) {
+record *disk::getRecord(blockAddress *addr, bool printFlag) {
     // everytime we retrieve a block, increment the access time
     void *block = getBlock(addr->index);
-    printBlock(block, addr->index);
+    if (printFlag == true){
+        printBlock(block, addr->index);
+    };
     record *r = new record();
     memcpy(r, (char *)block+addr->offset, sizeof(record));
     return r;

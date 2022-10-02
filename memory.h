@@ -37,7 +37,7 @@ class disk {
         void printitems(blockAddress *baddr);
 
         // fetch record
-        record *getRecord(blockAddress *addr);
+        record *getRecord(blockAddress *addr, bool printFlag);
 
         void *getBlock(int index);
 

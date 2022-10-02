@@ -88,24 +88,24 @@ void BPlusTree::insert(void *address, int key) {
         while (key > cursor->keys[i] && i < cursor->numKeys)i++;
         if (cursor->keys[i] == key) {
             OverflowNode *overflow = (OverflowNode *) cursor->pointers[i];
-            //OverflowNode *next;
-            //while (overflow) {
-            //    next = overflow;
-            //    overflow = (OverflowNode *) overflow->pointers[overflowSize-1];
-            //}
-            //overflow = next;
+            OverflowNode *next;
+            while (overflow) {
+                next = overflow;
+                overflow = (OverflowNode *) overflow->pointers[overflowSize-1];
+            }
+            overflow = next;
             if (overflow->numKeys + 1 < overflowSize) {
                 overflow->pointers[overflow->numKeys] = address;
                 overflow->numKeys += 1;
             } else {
                 OverflowNode *newOverflow = new OverflowNode(overflowSize);
-                //overflow->pointers[overflowSize - 1] = newOverflow;
+                overflow->pointers[overflowSize - 1] = newOverflow;
                 newOverflow->pointers[newOverflow->numKeys] = address;
                 newOverflow->numKeys += 1;
                 //overflow->pointers[overflowSize-1] = newOverflow;
-                newOverflow->pointers[overflowSize - 1] = cursor->pointers[i];
+                //newOverflow->pointers[overflowSize - 1] = cursor->pointers[i];
                 // set new block as the first one in overflow, do not have to chase pointers
-                cursor->pointers[i]  = newOverflow;
+                //cursor->pointers[i]  = newOverflow;
             }
         } else {
             OverflowNode *newOverflow = new OverflowNode(overflowSize);
