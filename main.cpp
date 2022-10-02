@@ -22,7 +22,7 @@ void conductExperiments(int blockSize) {
     ofstream out1("results_" + to_string(blocksize) + "B.txt");
     streambuf *coutbuf = std::cout.rdbuf();
     std::cout.rdbuf(out1.rdbuf());
-    // ofstream out = ofstream("output2.txt");
+
     /*
     =============================================================
     Experiment 1:
@@ -55,10 +55,8 @@ void conductExperiments(int blockSize) {
         blockAddress *addr = Disk->insertRecord(str, avgRate, nVotes);
         bplustree->insert(addr, nVotes);
     }
-    // Report statistics
     //Size of database = size of relational data + index
     Disk->reportStatistics();
-    // bplustree->display();
     cout << "Size of database + index = " << (Disk->getSize() + bplustree->getNumNodes()*blocksize*1.0) / 1000000 << "MB."<< endl;
 
     /*
@@ -78,19 +76,11 @@ void conductExperiments(int blockSize) {
     std::cout << "Parameter n of the B+ tree    : " << bplustree->getMaxKeys() << endl;
     std::cout << "Number of nodes of the B+ tree: " << bplustree->getNumNodes() << endl; //numnodes to be updated
     std::cout << "Height of the B+ tree         : " << bplustree->getHeight(bplustree->getRoot()) << endl; //height to be updated
-    std::cout << "Root Node: ";
+    std::cout << "Root Node of the B+ tree: \n";
     bplustree->displayNode(bplustree->getRoot()); //getRoot gets the root address
     std::cout << endl;
-    std::cout << "\n1st Child Node: " << endl;
+    std::cout << "1st Child Node: " << endl;
     bplustree->displayNode((Node *)bplustree->getRoot()->pointers[0]);
-    //bplustree->display();
-    //Node *root = bplustree.getRoot();
-    //Node *firstChild = (Node *) root->pointers[0];
-
-    //for (int i=0; i<firstChild->numKeys; i++) {
-    //    cout << firstChild->keys[i] << " ";
-    //}
-
 
     /*
     =============================================================
@@ -118,7 +108,7 @@ void conductExperiments(int blockSize) {
         }
     }
     bplustree->removeT();
-    std::cout << "Content of data blocks the process accesses (1st 5 blocks): " << endl;
+    std::cout << "\nContent of data blocks the process accesses (1st 5 blocks): " << endl;
     float average = calculateAverage(Disk, temp);
     std::cout << "Number of data blocks the process accesses: " << Disk->getTimesAccessed() << endl;
     Disk->resetTimesAccessed();
@@ -149,7 +139,7 @@ void conductExperiments(int blockSize) {
     }
     //cout << avg2 / temp2.size() << endl;
     bplustree->removeT();
-    std::cout << "Content of data blocks the process accesses (1st 5 blocks): " << endl;
+    std::cout << "\nContent of data blocks the process accesses (1st 5 blocks): " << endl;
     average = calculateAverage(Disk, temp2);
     std::cout << "Number of data blocks the process accesses: " << Disk->getTimesAccessed() << endl;
     Disk->resetTimesAccessed();
@@ -173,18 +163,15 @@ void conductExperiments(int blockSize) {
     bplustree->remove(1000);
     int numNodesAfter = bplustree->getNumNodes();
     int numNodesChange = numNodesBefore - numNodesAfter;
-    //bplustree->display();
     std::cout << "The number of times that a node is deleted(or two nodes are merged): " << numNodesChange << endl;
     std::cout << "Number of nodes of updated B+ tree: " << bplustree->getNumNodes() << endl; //numnodes to be updated
     std::cout << "Height of updated B+ tree         : " << bplustree->getHeight(bplustree->getRoot()) << endl; //height to be updated
-    std::cout << "Root Node of updated B+ tree: ";
+    std::cout << "Root Node of updated B+ tree:\n ";
     bplustree->displayNode(bplustree->getRoot());
     std::cout << endl;
-    std::cout << "\n1st Child Node of updated B+ tree: " << endl;
+    std::cout << "1st Child Node of updated B+ tree: " << endl;
     bplustree->displayNode((Node *)bplustree->getRoot()->pointers[0]);
-    // exit(0);
     delete Disk;
-    // delete bplustree;
 }
 
 double calculateAverage(disk *Disk, vector<void *> &items) {
