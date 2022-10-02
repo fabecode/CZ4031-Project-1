@@ -89,23 +89,6 @@ void disk::deleteRecord(blockAddress *bAddr) {
     disk::size -= 19;
 }
 
-void disk::printitems(blockAddress *baddr) {
-    char testBlock[sizeof(record)];
-    memset(testBlock, '\0', sizeof(record));
-    void *b[disk::blocksize];
-    std::memcpy(b, (char *) memory+baddr->index*disk::blocksize, disk::blocksize);
-
-    int items = disk::blocksize / 19;
-    for (int j=0; j<items; j++) {
-        record tt;
-
-        std::memcpy(&tt, (char *)b+j*sizeof(record), sizeof(record));
-        if (memcmp(&tt, testBlock, sizeof(record)) != 0){
-            cout << tt.tconst << " " << tt.averageRating << " " << tt.numVotes << endl;
-        }
-    }
-}
-
 void disk::printBlock(void *block, int index) {
     char testBlock[sizeof(record)];
     memset(testBlock, '\0', sizeof(record));

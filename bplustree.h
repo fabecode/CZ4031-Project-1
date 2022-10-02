@@ -50,18 +50,18 @@ class BPlusTree {
         }
 
         //void insert(float key, Node *cursorDiskAddress, Node *childDiskAddress);
-        void insertInternal(int key, Node *cursorDiskAddress, Node *childDiskAddress);
+        void insertInternalNode(int key, Node *cursorDiskAddress, Node *childDiskAddress);
 
         void displayTree(Node *cursor, std::vector<std::string> *s, int *level);
 
-        void removeInternal(int key, Node *cursorDiskAddress, Node *childDiskAddress);
+        void removeInternalNode(int key, Node *cursorDiskAddress, Node *childDiskAddress);
 
         Node *findParent(Node *, Node *);
 
         int checkDuplicate(int key);
 
         //search
-        std::vector<void *> searchNumVotes(int lowerBoundKey, int upperBoundKey);
+        std::vector<void *> searchRange(int lowerBoundKey, int upperBoundKey);
 
         //print B+ tree
         void display();
